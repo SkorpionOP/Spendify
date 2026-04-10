@@ -374,7 +374,8 @@ input:focus, select:focus {
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-light);
-  display: flex; extract flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-secondary); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-secondary); cursor: pointer;
+  transition: all 0.2s;
 }
 
 .cat-chip.selected {
@@ -572,3 +573,310 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px
 /* Auth Layout */
 .auth-layout { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
 .auth-card { width: 100%; max-width: 400px; }
+
+/* ==============================
+   NETWORK STATUS BANNER
+   ============================== */
+.network-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  animation: bannerSlideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transition: all 0.4s;
+  flex-wrap: wrap;
+}
+
+.network-banner--offline {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.12));
+  border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15);
+}
+
+.network-banner--online {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.12));
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+}
+
+.network-banner--hide {
+  animation: bannerSlideUp 0.35s ease-in forwards;
+}
+
+/* Sync Now button inside the banner */
+#sync-badge-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#sync-now-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.9rem;
+  background: rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 99px;
+  color: #fbbf24;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s;
+  white-space: nowrap;
+}
+
+#sync-now-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.4);
+  transform: scale(1.04);
+}
+
+#sync-now-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+#sync-count-badge {
+  background: #f59e0b;
+  color: #000;
+  border-radius: 99px;
+  padding: 0 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Floating Sync Button (while online, pending items exist) */
+#spendly-sync-float {
+  position: fixed;
+  bottom: 5.5rem;
+  right: 1.25rem;
+  z-index: 10001;
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.1rem 0.65rem 0.9rem;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 99px;
+  color: #fbbf24;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: floatPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+#spendly-sync-float:hover {
+  background: rgba(245, 158, 11, 0.35);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+}
+
+.sync-float-badge {
+  background: #f59e0b;
+  color: #000;
+  border-radius: 99px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Floating Install Button */
+#pwa-install-float {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--primary, #6366f1);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 50%;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#pwa-install-float:hover {
+  transform: scale(1.1);
+  background: var(--primary, #6366f1);
+  color: white;
+}
+
+/* Install Banner */
+#pwa-install-banner {
+  position: fixed;
+  bottom: 6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(16, 16, 36, 0.9);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: var(--radius-lg, 18px);
+  padding: 1.1rem 1.5rem;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.1);
+  z-index: 10000;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: min(calc(100vw - 2rem), 440px);
+  color: white;
+  font-family: inherit;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  flex-wrap: wrap;
+}
+
+.install-banner-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: var(--primary, #6366f1);
+  flex-shrink: 0;
+}
+
+.install-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.install-banner-text strong { font-size: 0.95rem; font-weight: 700; }
+.install-banner-text span  { font-size: 0.78rem; color: rgba(255,255,255,0.55); }
+
+.install-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.install-banner-actions button {
+  width: auto;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+#pwa-dismiss-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5);
+}
+
+#pwa-dismiss-btn:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); }
+
+#pwa-install-btn {
+  background: var(--primary, #6366f1);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+}
+
+#pwa-install-btn:hover { background: #4f46e5; transform: translateY(-1px); }
+
+.install-banner--hide {
+  animation: installBannerHide 0.4s ease-in forwards;
+}
+
+/* Banner Animations */
+@keyframes bannerSlideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes bannerSlideUp {
+  from { transform: translateY(0);     opacity: 1; }
+  to   { transform: translateY(-100%); opacity: 0; }
+}
+
+@keyframes floatPop {
+  from { opacity: 0; transform: scale(0.6) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes slideUpIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes installBannerHide {
+  from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.95); }
+}
+
+/* ==============================
+   PAGE TRANSITION SMOOTHNESS
+   ============================== */
+html { scroll-behavior: smooth; }
+
+/* Smooth page load for all navigations */
+.page-wrapper {
+  animation: fadeIn 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Ripple effect for buttons */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.btn:active::after { opacity: 1; }
+.btn:active { transform: scale(0.97) !important; }
+
+/* Smoother form input transitions */
+input, select, textarea {
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+/* Mobile: toast above nav */
+@media (max-width: 768px) {
+  .network-banner { padding: 0.6rem 1rem; font-size: 0.78rem; }
+  #spendly-sync-float { bottom: 7rem; right: 1rem; }
+  #pwa-install-banner { bottom: 5rem; width: calc(100vw - 2rem); }
+}

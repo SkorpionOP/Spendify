@@ -200,6 +200,17 @@ def inject_firebase_config():
     )
 
 # -----------------------------
+# PWA ROUTES
+# -----------------------------
+@app.route('/sw.js')
+def sw_js():
+    return app.send_static_file('sw.js')
+
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
+
+# -----------------------------
 # LANDING PAGE
 # -----------------------------
 @app.route('/')
@@ -363,7 +374,7 @@ def dashboard():
     remaining_savings = savings - savings_used
     usage_percent = round((total_spent / needs) * 100, 2) if needs > 0 else 0
 
-    alert = session.pop('alert', None)
+    alert = request.args.get('alert') or session.pop('alert', None)
     if not alert:
         if usage_percent >= 100:
             alert = f"🚨 You have used {usage_percent}% of your budget — dipping into savings!"

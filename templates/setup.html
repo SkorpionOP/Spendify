@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Setup – Spendly</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>body { padding: 0; }</style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container nav-content">
+        <span class="navbar-brand">💸 Spendly</span>
+        <div class="navbar-links">
+            <a href="/dashboard" class="nav-pill">DASHBOARD</a>
+            <a href="/calendar" class="nav-pill">CALENDAR</a>
+            <a href="/analysis" class="nav-pill">ANALYSIS</a>
+            <a href="/history" class="nav-pill">HISTORY</a>
+            <a href="/setup" class="nav-pill active">SETTINGS</a>
+        </div>
+    </div>
+</nav>
+
+<div class="mobile-nav">
+    <a href="/dashboard" class="mobile-nav-item">
+        <i class="fas fa-th-large"></i>
+        <span>Home</span>
+    </a>
+    <a href="/calendar" class="mobile-nav-item">
+        <i class="fas fa-calendar-alt"></i>
+        <span>Calendar</span>
+    </a>
+    <a href="/analysis" class="mobile-nav-item">
+        <i class="fas fa-chart-line"></i>
+        <span>Stats</span>
+    </a>
+    <a href="/history" class="mobile-nav-item">
+        <i class="fas fa-history"></i>
+        <span>History</span>
+    </a>
+    <a href="/setup" class="mobile-nav-item active">
+        <i class="fas fa-cog"></i>
+        <span>Setup</span>
+    </a>
+</div>
+
+<div class="container auth-layout fade-in">
+    <div class="glass-card" style="max-width: 500px; width: 100%;">
+        <h2 class="mb-1 text-center">🎯 Budget Strategy</h2>
+        <p class="mb-2 text-center" style="color: var(--text-tertiary); font-size: 0.9rem;">Define how you want to allocate your monthly income.</p>
+
+        <form action="/setup" method="POST">
+            <div class="form-group">
+                <label>Monthly Salary (₹)</label>
+                <input type="number" name="salary" id="salary-input" value="30000" required oninput="calc()">
+            </div>
+
+            <div class="form-group">
+                <label>Allocation Split (Needs vs Savings)</label>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: 700;">
+                    <span id="needs-val" style="color: var(--primary);">60% Needs</span>
+                    <span id="savings-val" style="color: var(--accent);">40% Savings</span>
+                </div>
+                <input type="range" min="1" max="99" value="60" name="needs_percent" id="split-slider" oninput="calc()">
+                <input type="hidden" name="savings_percent" id="savings-percent-hidden" value="40">
+            </div>
+
+            <div class="glass-card mb-2" style="background: rgba(255,255,255,0.02);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                    <span style="color: var(--text-tertiary);">Monthly Needs Budget</span>
+                    <span id="needs-amount" style="font-weight: 800; color: #fff;">₹18,000</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-tertiary);">Monthly Savings Goal</span>
+                    <span id="savings-amount" style="font-weight: 800; color: #fff;">₹12,000</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full">SAVE SETTINGS</button>
+        </form>
+
+        <div style="margin: 2rem 0; border-top: 1px solid var(--border-light);"></div>
+
+        <h3 class="mb-1 text-center" style="font-size: 1.1rem;">👤 Account</h3>
+        <a href="/logout" class="btn btn-ghost btn-full" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+            <i class="fas fa-arrow-right-from-bracket"></i> LOG OUT
+        </a>
+    </div>
+</div>
+
+<script>
+function calc() {
+    const salary = parseFloat(document.getElementById('salary-input').value) || 0;
+    const needsPct = parseInt(document.getElementById('split-slider').value);
+    const savingsPct = 100 - needsPct;
+
+    document.getElementById('needs-val').innerText = needsPct + '% Needs';
+    document.getElementById('savings-val').innerText = savingsPct + '% Savings';
+    document.getElementById('savings-percent-hidden').value = savingsPct;
+
+    const needsAmt = (salary * needsPct / 100).toLocaleString('en-IN');
+    const savingsAmt = (salary * savingsPct / 100).toLocaleString('en-IN');
+
+    document.getElementById('needs-amount').innerText = '₹' + needsAmt;
+    document.getElementById('savings-amount').innerText = '₹' + savingsAmt;
+}
+document.addEventListener('DOMContentLoaded', calc);
+</script>
+</body>
+</html>

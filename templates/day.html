@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ selected_date }} – Spendly</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>body { padding: 0; }</style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container nav-content">
+        <span class="navbar-brand">💸 Spendly</span>
+        <div class="navbar-links">
+            <a href="/dashboard" class="nav-pill">DASHBOARD</a>
+            <a href="/calendar" class="nav-pill active">CALENDAR</a>
+            <a href="/analysis" class="nav-pill">ANALYSIS</a>
+            <a href="/history" class="nav-pill">HISTORY</a>
+        </div>
+    </div>
+</nav>
+
+<div class="mobile-nav">
+    <a href="/dashboard" class="mobile-nav-item">
+        <i class="fas fa-th-large"></i>
+        <span>Home</span>
+    </a>
+    <a href="/calendar" class="mobile-nav-item active">
+        <i class="fas fa-calendar-alt"></i>
+        <span>Calendar</span>
+    </a>
+    <a href="/analysis" class="mobile-nav-item">
+        <i class="fas fa-chart-line"></i>
+        <span>Stats</span>
+    </a>
+    <a href="/history" class="mobile-nav-item">
+        <i class="fas fa-history"></i>
+        <span>History</span>
+    </a>
+    <a href="/setup" class="mobile-nav-item">
+        <i class="fas fa-cog"></i>
+        <span>Setup</span>
+    </a>
+</div>
+
+<div class="container page-wrapper fade-in" style="padding-top: 2rem;">
+    <div style="text-align: center; margin-bottom: 2.5rem;">
+        <h1 style="font-size: 1.8rem;" class="accent">{{ selected_date }}</h1>
+        <p style="color: var(--text-tertiary); font-size: 0.9rem;">Daily activity summary</p>
+    </div>
+
+    <div class="stat-card mb-2" style="text-align: center; max-width: 400px; margin-left: auto; margin-right: auto;">
+        <div class="stat-label">Daily Outflow</div>
+        <div class="stat-value accent">₹{{ "%.2f"|format(total_spent) }}</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        <div class="glass-card">
+            <h3 class="mb-1"><i class="fas fa-tags" style="color: var(--primary);"></i> By Category</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for cat in categories %}
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border-light);">
+                    <span class="badge badge-primary">{{ cat_emoji(cat['category']) }} {{ cat['category'] }}</span>
+                    <span style="font-weight: 700;">₹{{ "%.2f"|format(cat['total']) }}</span>
+                </div>
+                {% else %}
+                <p style="color: var(--text-tertiary); text-align: center; padding: 1rem;">No transactions.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3 class="mb-1"><i class="fas fa-list-check" style="color: var(--accent);"></i> All Records</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for exp in expenses %}
+                <div style="padding: 1rem; background: var(--bg-card-elevated); border: 1px solid var(--border-light); border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="font-weight: 800; font-size: 1.1rem;">₹{{ "%.2f"|format(exp['amount']) }}</span>
+                        <span class="badge badge-primary">{{ exp['category'] }}</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ exp['note'] if exp['note'] else 'No description' }}</div>
+                </div>
+                {% else %}
+                <p style="color: var(--text-tertiary); text-align: center; padding: 1rem;">No records for this day.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="/calendar" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> Back to Calendar</a>
+    </div>
+</div>
+
+</body>
+</html>

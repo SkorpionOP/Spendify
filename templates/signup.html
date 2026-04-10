@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account – Spendly</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>body { padding: 0; }</style>
+</head>
+<body class="auth-layout">
+
+<div class="auth-card glass-card fade-in">
+    <div class="text-center mb-2">
+        <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Join Spendly</h1>
+        <p style="color: var(--text-tertiary); font-size: 0.85rem;">Start your journey to financial freedom.</p>
+    </div>
+
+    <div id="error-box" class="glass-card mb-2" style="display: none; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); padding: 0.75rem; color: var(--danger); font-size: 0.8rem; font-weight: 600; text-align: center;">
+        <i class="fas fa-exclamation-triangle"></i> <span id="error-msg"></span>
+    </div>
+
+    <button id="google-signup-btn" class="btn btn-ghost btn-full" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="Google">
+        Sign up with Google
+    </button>
+
+    <div style="display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0;">
+        <div style="flex: 1; height: 1px; background: var(--border-light);"></div>
+        <span style="font-size: 0.7rem; color: var(--text-tertiary); font-weight: 700;">OR</span>
+        <div style="flex: 1; height: 1px; background: var(--border-light);"></div>
+    </div>
+
+    <form id="email-signup-form">
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="signup-name" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="signup-email" placeholder="name@company.com" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="signup-password" placeholder="••••••••" required minlength="6">
+        </div>
+        <button type="submit" id="email-submit-btn" class="btn btn-primary btn-full">CREATE ACCOUNT</button>
+    </form>
+
+    <p class="text-center mt-2" style="font-size: 0.85rem; color: var(--text-tertiary);">
+        Already have an account? <a href="/login" style="color: var(--primary); font-weight: 700;">Sign in</a>
+    </p>
+
+    <div style="text-align: center; margin-top: 1.5rem;">
+        <a href="/" style="font-size: 0.75rem; color: var(--text-tertiary);"><i class="fas fa-arrow-left"></i> Back to Home</a>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "{{ FIREBASE_API_KEY }}",
+      authDomain: "{{ FIREBASE_AUTH_DOMAIN }}",
+      projectId: "{{ FIREBASE_PROJECT_ID }}",
+      storageBucket: "{{ FIREBASE_STORAGE_BUCKET }}",
+      messagingSenderId: "{{ FIREBASE_MESSAGING_SENDER_ID }}",
+      appId: "{{ FIREBASE_APP_ID }}",
+      measurementId: "{{ FIREBASE_MEASUREMENT_ID }}"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const errorBox = document.getElementById('error-box');
+    const errorMsg = document.getElementById('error-msg');
+
+    function showError(msg) {
+        errorBox.style.display = 'block';
+        errorMsg.innerText = msg;
+    }
+
+    async function syncBackend(user, fallbackName) {
+        const response = await fetch('/auth/firebase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || fallbackName,
+                profile_pic: user.photoURL
+            })
+        });
+        if (response.ok) { window.location.href = '/setup'; } 
+        else { showError("Server sync failed."); }
+    }
+
+    // Email/Password Signup
+    document.getElementById('email-signup-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('signup-name').value;
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        
+        document.getElementById('email-submit-btn').innerText = 'Creating...';
+        try {
+            const result = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(result.user, { displayName: name });
+            await syncBackend(result.user, name);
+        } catch (err) {
+            showError("Signup failed: " + err.message);
+            document.getElementById('email-submit-btn').innerText = 'CREATE ACCOUNT';
+        }
+    };
+
+    // Google Signup
+    document.getElementById('google-signup-btn').onclick = async () => {
+        try {
+            const result = await signInWithPopup(auth, provider);
+            await syncBackend(result.user, result.user.displayName);
+        } catch (err) {
+            showError("Google Auth failed: " + err.message);
+        }
+    };
+</script>
+
+</body>
+</html>

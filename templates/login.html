@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In – Spendly</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>body { padding: 0; }</style>
+</head>
+<body class="auth-layout">
+
+<div class="auth-card glass-card fade-in">
+    <div class="text-center mb-2">
+        <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Welcome Back</h1>
+        <p style="color: var(--text-tertiary); font-size: 0.85rem;">Sign in to continue tracking your progress.</p>
+    </div>
+
+    <div id="error-box" class="glass-card mb-2" style="display: none; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); padding: 0.75rem; color: var(--danger); font-size: 0.8rem; font-weight: 600; text-align: center;">
+        <i class="fas fa-exclamation-triangle"></i> <span id="error-msg"></span>
+    </div>
+    
+    <div id="success-box" class="glass-card mb-2" style="display: none; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); padding: 0.75rem; color: var(--success); font-size: 0.8rem; font-weight: 600; text-align: center;">
+        <i class="fas fa-check-circle"></i> <span id="success-msg"></span>
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+        <button id="tab-email" style="flex: 1; background: none; border: none; color: #fff; font-weight: 700; cursor: pointer; padding-bottom: 5px; border-bottom: 2px solid var(--primary); transition: 0.3s;">Email</button>
+        <button id="tab-phone" style="flex: 1; background: none; border: none; color: var(--text-tertiary); font-weight: 600; cursor: pointer; padding-bottom: 5px; border-bottom: 2px solid transparent; transition: 0.3s;">Phone</button>
+    </div>
+
+    <!-- Email Section -->
+    <div id="email-section">
+        <form id="email-login-form">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="login-email" placeholder="name@company.com" required>
+            </div>
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <label style="margin: 0;">Password</label>
+                    <a href="#" id="forgot-password-btn" style="font-size: 0.75rem; color: var(--primary); text-decoration: none;">Forgot Password?</a>
+                </div>
+                <input type="password" id="login-password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" id="email-submit-btn" class="btn btn-primary btn-full">SIGN IN</button>
+        </form>
+    </div>
+
+    <!-- Phone Section -->
+    <div id="phone-section" style="display: none;">
+        <div id="phone-input-section">
+            <div class="form-group">
+                <label>Phone Number (with country code)</label>
+                <input type="tel" id="phone-number" placeholder="+1 123 456 7890">
+            </div>
+            <div id="recaptcha-container" style="margin-bottom: 1rem; display: flex; justify-content: center;"></div>
+            <button id="send-code-btn" type="button" class="btn btn-primary btn-full">SEND CODE</button>
+        </div>
+        
+        <div id="verification-section" style="display: none;">
+            <div class="form-group">
+                <label>Verification Code</label>
+                <input type="text" id="verification-code" placeholder="123456">
+            </div>
+            <button id="verify-code-btn" type="button" class="btn btn-primary btn-full">VERIFY & SIGN IN</button>
+        </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0;">
+        <div style="flex: 1; height: 1px; background: var(--border-light);"></div>
+        <span style="font-size: 0.7rem; color: var(--text-tertiary); font-weight: 700;">OR</span>
+        <div style="flex: 1; height: 1px; background: var(--border-light);"></div>
+    </div>
+
+    <button id="google-signin-btn" class="btn btn-ghost btn-full" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="Google">
+        Continue with Google
+    </button>
+
+    <p class="text-center mt-2" style="font-size: 0.85rem; color: var(--text-tertiary);">
+        Don't have an account? <a href="/signup" style="color: var(--primary); font-weight: 700;">Sign up</a>
+    </p>
+    
+    <div style="text-align: center; margin-top: 1.5rem;">
+        <a href="/" style="font-size: 0.75rem; color: var(--text-tertiary);"><i class="fas fa-arrow-left"></i> Back to Home</a>
+    </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, sendPasswordResetEmail, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "{{ FIREBASE_API_KEY }}",
+      authDomain: "{{ FIREBASE_AUTH_DOMAIN }}",
+      projectId: "{{ FIREBASE_PROJECT_ID }}",
+      storageBucket: "{{ FIREBASE_STORAGE_BUCKET }}",
+      messagingSenderId: "{{ FIREBASE_MESSAGING_SENDER_ID }}",
+      appId: "{{ FIREBASE_APP_ID }}",
+      measurementId: "{{ FIREBASE_MEASUREMENT_ID }}"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const errorBox = document.getElementById('error-box');
+    const errorMsg = document.getElementById('error-msg');
+    const successBox = document.getElementById('success-box');
+    const successMsg = document.getElementById('success-msg');
+
+    function showError(msg) {
+        errorBox.style.display = 'block';
+        successBox.style.display = 'none';
+        errorMsg.innerText = msg;
+    }
+    function showSuccess(msg) {
+        successBox.style.display = 'block';
+        errorBox.style.display = 'none';
+        successMsg.innerText = msg;
+    }
+
+    // Tabs logic
+    const tabEmail = document.getElementById('tab-email');
+    const tabPhone = document.getElementById('tab-phone');
+    const emailSec = document.getElementById('email-section');
+    const phoneSec = document.getElementById('phone-section');
+
+    tabEmail.onclick = () => {
+        tabEmail.style.color = '#fff'; tabEmail.style.borderColor = 'var(--primary)';
+        tabPhone.style.color = 'var(--text-tertiary)'; tabPhone.style.borderColor = 'transparent';
+        emailSec.style.display = 'block'; phoneSec.style.display = 'none';
+    };
+    tabPhone.onclick = () => {
+        tabPhone.style.color = '#fff'; tabPhone.style.borderColor = 'var(--primary)';
+        tabEmail.style.color = 'var(--text-tertiary)'; tabEmail.style.borderColor = 'transparent';
+        phoneSec.style.display = 'block'; emailSec.style.display = 'none';
+        if (!window.recaptchaVerifier) setupRecaptcha();
+    };
+
+    async function syncBackend(user) {
+        const response = await fetch('/auth/firebase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || (user.phoneNumber),
+                profile_pic: user.photoURL
+            })
+        });
+        if (response.ok) { window.location.href = '/dashboard'; } 
+        else { showError("Server sync failed."); }
+    }
+
+    // Email/Password Login
+    document.getElementById('email-login-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        document.getElementById('email-submit-btn').innerText = 'Signing in...';
+        try {
+            const result = await signInWithEmailAndPassword(auth, email, password);
+            await syncBackend(result.user);
+        } catch (err) {
+            showError("Authentication failed: " + err.message);
+            document.getElementById('email-submit-btn').innerText = 'SIGN IN';
+        }
+    };
+
+    // Forgot Password
+    document.getElementById('forgot-password-btn').onclick = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        if (!email) {
+            showError("Please enter your email above to reset password.");
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            showSuccess(`Password reset email sent to ${email}`);
+        } catch (err) {
+            showError("Password reset failed: " + err.message);
+        }
+    };
+
+    // Phone Auth
+    function setupRecaptcha() {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'compact'
+        });
+        window.recaptchaVerifier.render();
+    }
+
+    document.getElementById('send-code-btn').onclick = async () => {
+        const phoneNumber = document.getElementById('phone-number').value;
+        if (!phoneNumber) { showError("Enter a phone number"); return; }
+        document.getElementById('send-code-btn').innerText = 'Sending...';
+        try {
+            window.confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+            document.getElementById('phone-input-section').style.display = 'none';
+            document.getElementById('verification-section').style.display = 'block';
+            showSuccess("Verification code sent!");
+        } catch (err) {
+            showError("Failed to send OTP: " + err.message);
+            document.getElementById('send-code-btn').innerText = 'SEND CODE';
+        }
+    };
+
+    document.getElementById('verify-code-btn').onclick = async () => {
+        const code = document.getElementById('verification-code').value;
+        if (!code) { showError("Enter the code"); return; }
+        document.getElementById('verify-code-btn').innerText = 'Verifying...';
+        try {
+            const result = await window.confirmationResult.confirm(code);
+            await syncBackend(result.user);
+        } catch (err) {
+            showError("Invalid Code: " + err.message);
+            document.getElementById('verify-code-btn').innerText = 'VERIFY & SIGN IN';
+        }
+    };
+
+    // Google Sign-in
+    document.getElementById('google-signin-btn').onclick = async () => {
+        try {
+            const result = await signInWithPopup(auth, provider);
+            await syncBackend(result.user);
+        } catch (err) {
+            showError("Google Auth failed: " + err.message);
+        }
+    };
+
+</script>
+
+</body>
+</html>

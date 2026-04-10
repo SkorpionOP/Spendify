@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spendly – Master Your Money</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>body { padding: 0; }</style>
+</head>
+<body>
+
+<div class="container fade-in">
+    <div class="hero-section">
+        <div style="background: rgba(99, 102, 241, 0.1); display: inline-flex; padding: 0.5rem 1rem; border-radius: 99px; border: 1px solid rgba(99, 102, 241, 0.2); color: var(--primary); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2rem;">
+            Introducing Spendly 2.0
+        </div>
+        <h1 class="hero-title">Your financial freedom starts here.</h1>
+        <p class="hero-subtitle">The ultra-modern expense tracker designed for clarity, speed, and beautiful money management.</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="/signup" class="btn btn-primary" style="padding: 1rem 2.5rem;">Get Started Free</a>
+            <a href="/login" class="btn btn-ghost" style="padding: 1rem 2.5rem;">Sign In</a>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 4rem;">
+        <div class="glass-card text-center">
+            <div style="width: 50px; height: 50px; background: rgba(99, 102, 241, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: var(--primary); font-size: 1.5rem;">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <h3 class="mb-1">Lightning Fast</h3>
+            <p style="color: var(--text-tertiary); font-size: 0.9rem;">Log transactions in seconds with our optimized mobile flow.</p>
+        </div>
+        <div class="glass-card text-center">
+            <div style="width: 50px; height: 50px; background: rgba(16, 185, 129, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: var(--accent); font-size: 1.5rem;">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <h3 class="mb-1">Smart Analytics</h3>
+            <p style="color: var(--text-tertiary); font-size: 0.9rem;">Visualize your spending with beautiful charts and deep-dive insights.</p>
+        </div>
+        <div class="glass-card text-center">
+            <div style="width: 50px; height: 50px; background: rgba(139, 92, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: var(--secondary); font-size: 1.5rem;">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h3 class="mb-1">Private & Secure</h3>
+            <p style="color: var(--text-tertiary); font-size: 0.9rem;">Your financial data stays your own. Simple, encrypted, and reliable.</p>
+        </div>
+    </div>
+</div>
+
+<footer style="margin-top: 8rem; padding: 4rem 0; text-align: center; border-top: 1px solid var(--border-light); color: var(--text-tertiary); font-size: 0.8rem;">
+    &copy; 2026 Spendly Analytics. Built for the modern saver.
+</footer>
+
+</body>
+</html>

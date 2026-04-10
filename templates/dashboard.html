@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard – Spendly</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>body { padding: 0; }</style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container nav-content">
+        <span class="navbar-brand">💸 Spendly</span>
+        <div class="navbar-links">
+            <a href="/dashboard" class="nav-pill active">DASHBOARD</a>
+            <a href="/calendar" class="nav-pill">CALENDAR</a>
+            <a href="/analysis" class="nav-pill">ANALYSIS</a>
+            <a href="/history" class="nav-pill">HISTORY</a>
+            <a href="/setup" class="nav-pill">SETTINGS</a>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-left: 1rem; padding-left: 1rem; border-left: 1px solid var(--border-light);">
+                <div style="text-align: right; display: flex; flex-direction: column;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: #fff;">{{ session.get('name', 'User') }}</span>
+                    <a href="/logout" style="font-size: 0.65rem; color: var(--danger); font-weight: 600;">LOGOUT</a>
+                </div>
+                {% if session.get('profile_pic') %}
+                <img src="{{ session['profile_pic'] }}" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover;" alt="Profile">
+                {% else %}
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--bg-card-elevated); border: 1px solid var(--border-light); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">👤</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="mobile-nav">
+    <a href="/dashboard" class="mobile-nav-item active">
+        <i class="fas fa-th-large"></i>
+        <span>Home</span>
+    </a>
+    <a href="/calendar" class="mobile-nav-item">
+        <i class="fas fa-calendar-alt"></i>
+        <span>Calendar</span>
+    </a>
+    <a href="/analysis" class="mobile-nav-item">
+        <i class="fas fa-chart-line"></i>
+        <span>Stats</span>
+    </a>
+    <a href="/history" class="mobile-nav-item">
+        <i class="fas fa-history"></i>
+        <span>History</span>
+    </a>
+    <a href="/setup" class="mobile-nav-item">
+        <i class="fas fa-cog"></i>
+        <span>Setup</span>
+    </a>
+</div>
+
+<div class="page-wrapper container fade-in" style="padding-top: 2rem;">
+    
+    {% if alert %}
+    <div class="glass-card mb-2" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.2); display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem;">
+        <i class="fas fa-circle-info" style="color: var(--primary);"></i>
+        <span style="font-size: 0.9rem; font-weight: 600;">{{ alert }}</span>
+    </div>
+    {% endif %}
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-label">Monthly Income</div>
+            <div class="stat-value accent">₹{{ "%.0f"|format(finance['salary'] or 0) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Spent</div>
+            <div class="stat-value">₹{{ "%.2f"|format(total_spent) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Budget Left</div>
+            <div class="stat-value" style="{% if remaining_needs < 0 %}color: var(--danger){% else %}color: var(--success){% endif %}">
+                ₹{{ "%.2f"|format(remaining_needs) }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Savings Balance</div>
+            <div class="stat-value">₹{{ "%.2f"|format(remaining_savings) }}</div>
+        </div>
+    </div>
+
+    <div class="glass-card mb-2">
+        <div class="progress-header">
+            <div>
+                <h3 style="font-size: 1.1rem; margin-bottom: 0.2rem;">Budget Usage</h3>
+                <p style="font-size: 0.8rem; color: var(--text-tertiary);">Needs Cap: ₹{{ "%.0f"|format(finance['needs']) }}</p>
+            </div>
+            {% set pct = (total_spent / finance['needs'] * 100) if finance['needs'] > 0 else 0 %}
+            <div style="font-size: 1.5rem; font-weight: 800; color: {% if pct >= 100 %}var(--danger){% elif pct >= 80 %}var(--warning){% else %}var(--success){% endif %}">
+                {{ "%.0f"|format(pct) }}%
+            </div>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" style="width: {{ [pct, 100]|min }}%; background: {% if pct >= 100 %}var(--danger){% elif pct >= 80 %}var(--warning){% else %}var(--primary){% endif %};"></div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <!-- ADD FORM -->
+        <div class="glass-card">
+            <h3 class="mb-1"><i class="fas fa-plus-circle" style="color: var(--primary);"></i> Add Transaction</h3>
+            <form action="/add" method="POST">
+                <div class="form-group">
+                    <label>Amount (₹)</label>
+                    <input type="number" step="0.01" name="amount" placeholder="0.00" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="category-grid" id="category-grid"></div>
+                    <input type="hidden" name="category" id="selected-category" value="Food">
+                </div>
+                <div class="form-group">
+                    <label>Note</label>
+                    <input type="text" name="note" placeholder="What was this for?">
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" name="expense_date" id="expense-date">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">LOG EXPENSE</button>
+            </form>
+        </div>
+
+        <!-- QUICK STATS & ACTIONS -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <div class="glass-card">
+                <h3 class="mb-1"><i class="fas fa-star" style="color: var(--warning);"></i> Top Expense</h3>
+                {% if top_category %}
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span class="badge badge-primary">{{ cat_emoji(top_category['category']) }} {{ top_category['category'] }}</span>
+                    <span style="font-weight: 800; font-size: 1.4rem;">₹{{ "%.0f"|format(top_category['total']) }}</span>
+                </div>
+                {% else %}
+                <p style="color: var(--text-tertiary); font-size: 0.85rem;">No data yet.</p>
+                {% endif %}
+            </div>
+            <div class="glass-card">
+                <h3 class="mb-1"><i class="fas fa-wallet" style="color: var(--success);"></i> Quick Top-up</h3>
+                <div style="display: flex; gap: 0.75rem;">
+                    <form action="/add_needs" method="POST" style="flex: 1;">
+                        <input type="hidden" name="needs" value="500">
+                        <button class="btn btn-ghost btn-full" style="font-size: 0.75rem;">+500 Budget</button>
+                    </form>
+                    <form action="/add_savings" method="POST" style="flex: 1;">
+                        <input type="hidden" name="savings" value="1000">
+                        <button class="btn btn-ghost btn-full" style="font-size: 0.75rem;">+1k Savings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECENT ACTIVITY -->
+    <div class="glass-card mb-2">
+        <h3 class="mb-1"><i class="fas fa-receipt" style="color: var(--primary);"></i> Recent Activity</h3>
+        <table style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Note</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in expenses %}
+                <tr>
+                    <td style="font-weight: 800;">₹{{ "%.2f"|format(exp['amount']) }}</td>
+                    <td><span class="badge badge-primary">{{ cat_emoji(exp['category']) }} {{ exp['category'] }}</span></td>
+                    <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ exp['note'] if exp['note'] else '—' }}</td>
+                    <td style="color: var(--text-tertiary); font-size: 0.8rem;">{{ exp['date'] }}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.4rem;">
+                            <a href="/edit/{{ exp['id'] }}" class="btn btn-ghost" style="padding: 0.4rem 0.5rem; font-size: 0.7rem;"><i class="fas fa-edit"></i></a>
+                            <a href="/delete/{{ exp['id'] }}" class="btn btn-ghost" style="padding: 0.4rem 0.5rem; font-size: 0.7rem; color: var(--danger);"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-tertiary);">No transactions found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+const CATEGORIES = [
+    { name: 'Food',          emoji: '🍔' },
+    { name: 'Transport',     emoji: '🚗' },
+    { name: 'Shopping',      emoji: '🛍️' },
+    { name: 'Bills',         emoji: '⚡' },
+    { name: 'Entertainment', emoji: '🎬' },
+    { name: 'Health',        emoji: '💊' },
+    { name: 'Education',     emoji: '📚' },
+    { name: 'Groceries',     emoji: '🛒' },
+    { name: 'Fitness',       emoji: '🏋️' },
+    { name: 'Travel',        emoji: '✈️' },
+    { name: 'Rent',          emoji: '🏠' },
+    { name: 'Subscriptions', emoji: '📱' },
+    { name: 'Dining Out',    emoji: '🍽️' },
+    { name: 'Beauty',        emoji: '💄' },
+    { name: 'Pets',          emoji: '🐾' },
+    { name: 'Gifts',         emoji: '🎁' },
+    { name: 'Investment',    emoji: '📊' },
+    { name: 'Others',        emoji: '📦' },
+];
+
+let selectedCat = 'Food';
+
+function renderCategories() {
+    const grid = document.getElementById('category-grid');
+    grid.innerHTML = '';
+    CATEGORIES.forEach(cat => {
+        const chip = document.createElement('div');
+        chip.className = 'cat-chip' + (cat.name === selectedCat ? ' selected' : '');
+        chip.innerHTML = `<span>${cat.emoji}</span><span style="font-size:10px">${cat.name}</span>`;
+        chip.onclick = () => {
+            selectedCat = cat.name;
+            document.getElementById('selected-category').value = cat.name;
+            renderCategories();
+        };
+        grid.appendChild(chip);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('expense-date').valueAsDate = new Date();
+    renderCategories();
+});
+</script>
+</body>
+</html>

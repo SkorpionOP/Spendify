@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity History – Spendly</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>body { padding: 0; }</style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container nav-content">
+        <span class="navbar-brand">💸 Spendly</span>
+        <div class="navbar-links">
+            <a href="/dashboard" class="nav-pill">DASHBOARD</a>
+            <a href="/calendar" class="nav-pill">CALENDAR</a>
+            <a href="/analysis" class="nav-pill">ANALYSIS</a>
+            <a href="/history" class="nav-pill active">HISTORY</a>
+            <a href="/setup" class="nav-pill">SETTINGS</a>
+        </div>
+    </div>
+</nav>
+
+<div class="mobile-nav">
+    <a href="/dashboard" class="mobile-nav-item">
+        <i class="fas fa-th-large"></i>
+        <span>Home</span>
+    </a>
+    <a href="/calendar" class="mobile-nav-item">
+        <i class="fas fa-calendar-alt"></i>
+        <span>Calendar</span>
+    </a>
+    <a href="/analysis" class="mobile-nav-item">
+        <i class="fas fa-chart-line"></i>
+        <span>Stats</span>
+    </a>
+    <a href="/history" class="mobile-nav-item active">
+        <i class="fas fa-history"></i>
+        <span>History</span>
+    </a>
+    <a href="/setup" class="mobile-nav-item">
+        <i class="fas fa-cog"></i>
+        <span>Setup</span>
+    </a>
+</div>
+
+<div class="container page-wrapper fade-in" style="padding-top: 2rem;">
+    <div style="text-align: center; margin-bottom: 2.5rem;">
+        <h1 style="font-size: 2rem;" class="accent">⏳ Archive</h1>
+        <p style="color: var(--text-tertiary); font-size: 0.9rem;">Your financial records across the months</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 600px; margin: 0 auto;">
+        {% for m in months %}
+        <a href="/analysis/{{ m['month'] }}" class="glass-card" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 44px; height: 44px; background: rgba(99, 102, 241, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div>
+                    <div style="font-weight: 700; font-size: 1.1rem; color: #fff;">{{ m['month'] }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-tertiary);">View breakdown</div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-weight: 800; color: var(--primary);">₹{{ "%.0f"|format(m['total'] or 0) }}</div>
+                <i class="fas fa-chevron-right" style="font-size: 0.7rem; color: var(--text-tertiary);"></i>
+            </div>
+        </a>
+        {% else %}
+        <div class="glass-card text-center" style="padding: 4rem 2rem;">
+            <i class="fas fa-folder-open mb-1" style="font-size: 3rem; color: var(--text-tertiary);"></i>
+            <p style="color: var(--text-tertiary);">No records found in the archive.</p>
+            <a href="/dashboard" class="btn btn-primary mt-2">Start Logging</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+</body>
+</html>

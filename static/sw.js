@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'spendly-v8';
+const CACHE_VERSION = 'spendly-v10';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 const ALL_CACHES    = [STATIC_CACHE, PAGE_CACHE];
@@ -263,19 +263,42 @@ self.addEventListener('fetch', event => {
           return res;
         })
         .catch(() => {
-          // Network failed – try cache
+          // Network failed – try cache for the specific URL
           return caches.match(request).then(cached => {
             if (cached) return cached;
             
-            // If it's a navigational request and we have NO cache, show the minimal offline page
+            // If specific page is missing, try falling back to the cached Dashboard (most useful view)
             if (request.mode === 'navigate') {
-              return new Response(
-                `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Offline – Spendly</title>
-                <style>body{background:#02020a;color:#94a3b8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
-                .box{text-align:center;padding:2rem}h1{color:#6366f1;font-size:1.5rem}button{background:#6366f1;color:#fff;border:none;padding:.7rem 1.5rem;border-radius:8px;cursor:pointer;margin-top:1rem}</style></head>
-                <body><div class="box"><h1>Connection Lost</h1><p>We'll reconcile your data once you're back online.</p><button onclick="location.reload()">Retry</button></div></body></html>`,
-                { status: 200, headers: { 'Content-Type': 'text/html' } }
-              );
+              return caches.match('/dashboard').then(dash => {
+                if (dash) return dash;
+                
+                // Absolute fallback: Premium Offline Page
+                return new Response(
+                  `<!DOCTYPE html><html><head><meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width,initial-scale=1">
+                  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet">
+                  <title>Offline – Spendly</title>
+                  <style>
+                    :root { --primary: #6366f1; --bg: #02020a; }
+                    body { background: var(--bg); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+                    body::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15), transparent 70%); }
+                    .card { position: relative; background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); padding: 3rem; border-radius: 24px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-width: 320px; animation: pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+                    @keyframes pop { from { opacity: 0; transform: scale(0.9) translateY(20px); } }
+                    .icon { font-size: 3.5rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 15px rgba(99,102,241,0.5)); }
+                    h1 { font-size: 1.75rem; margin: 0 0 0.75rem; background: linear-gradient(135deg, #fff, #a5b4fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                    p { color: rgba(255,255,255,0.5); font-size: 0.9rem; line-height: 1.6; margin-bottom: 2rem; }
+                    button { background: var(--primary); color: #fff; border: none; padding: 1rem 2rem; border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.3s; width: 100%; box-shadow: 0 10px 20px rgba(99,102,241,0.3); }
+                    button:hover { transform: translateY(-2px); background: #4f46e5; box-shadow: 0 15px 30px rgba(99,102,241,0.4); }
+                  </style></head>
+                  <body><div class="card">
+                    <div class="icon">📡</div>
+                    <h1>Connection Lost</h1>
+                    <p>Spendly is ready to save your data, but we can't reach the server right now.</p>
+                    <button onclick="location.reload()">RETRY CONNECTION</button>
+                  </div></body></html>`,
+                  { status: 200, headers: { 'Content-Type': 'text/html' } }
+                );
+              });
             }
             return new Response("Offline", { status: 503 });
           });
@@ -291,27 +314,30 @@ async function handlePost(request) {
   try {
     const res = await fetch(request.clone(), { credentials: 'include' });
     return res;
-  } catch {
+  } catch (err) {
+    console.log('[Spendly] POST failed, attempting offline queue', err);
+    
     // Offline – read formData and queue it
     let formDataArray = [];
     try {
-      const fd = await request.clone().formData();
+      const clone = request.clone();
+      const fd = await clone.formData();
       formDataArray = Array.from(fd.entries());
-    } catch {}
+    } catch (e) {
+      console.warn('[Spendly] Could not extract form data', e);
+    }
 
     await enqueue(request.url, formDataArray);
 
     // Notify clients about the new queue item
-    broadcastToClients({ type: 'QUEUED', count: (await getQueue()).length });
+    const currentQueue = await getQueue();
+    broadcastToClients({ type: 'QUEUED', count: currentQueue.length });
 
-    // Derive redirect target from the POST URL
-    const pathname = new URL(request.url).pathname;
-    let redirectTo = '/dashboard?offline=1';
-    if (pathname === '/add')          redirectTo = '/dashboard?offline=1&msg=Expense+saved+offline';
-    if (pathname === '/add_needs')    redirectTo = '/dashboard?offline=1&msg=Budget+top-up+queued';
-    if (pathname === '/add_savings')  redirectTo = '/dashboard?offline=1&msg=Savings+top-up+queued';
-    if (pathname === '/edit')         redirectTo = '/dashboard?offline=1&msg=Edit+queued';
-
+    // Derive redirect target
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    let redirectTo = '/dashboard?offline=1&msg=Action+Saved+Offline';
+    
     return Response.redirect(redirectTo, 303);
   }
 }

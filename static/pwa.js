@@ -24,7 +24,7 @@ if ('serviceWorker' in navigator) {
 
     if (msg.type === 'QUEUED') {
       updateSyncBadge(msg.count);
-      showNetworkBanner('offline');
+      showToastGlobal(`📦 Transaction saved offline (${msg.count} pending)`, 'warning');
     }
     if (msg.type === 'SYNC_DONE') {
       updateSyncBadge(0);
@@ -72,18 +72,17 @@ function showNetworkBanner(state) {
 }
 
 function updateSyncBadge(count) {
-  const badge = document.getElementById('sync-count-badge');
-  const container = document.getElementById('sync-badge-container');
-  if (badge) badge.textContent = count;
-  if (container) container.style.display = count > 0 ? 'flex' : 'none';
-
-  // Also update the floating sync button
+  createFloatingSyncButton(); // Ensure it exists
   const floatBtn = document.getElementById('spendly-sync-float');
   if (floatBtn) {
     floatBtn.style.display = count > 0 ? 'flex' : 'none';
     const floatBadge = floatBtn.querySelector('.sync-float-badge');
     if (floatBadge) floatBadge.textContent = count;
   }
+
+  // Backup: Update banner badge if it exists
+  const badge = document.getElementById('sync-count-badge');
+  if (badge) badge.textContent = count;
 }
 
 window.triggerSyncNow = async function () {
@@ -161,6 +160,7 @@ window.addEventListener('DOMContentLoaded', () => {
 //  items are pending and user is back online)
 // ───────────────────────────────────────────
 function createFloatingSyncButton() {
+  if (document.getElementById('spendly-sync-float')) return;
   const btn = document.createElement('button');
   btn.id = 'spendly-sync-float';
   btn.style.display = 'none';

@@ -57,30 +57,18 @@ function createNetworkBanner() {
 }
 
 function showNetworkBanner(state) {
-  createNetworkBanner();
-  networkBanner.className = `network-banner network-banner--${state}`;
-
+  // Silent banner – only show if queue is > 0
   if (state === 'offline') {
-    networkBanner.innerHTML = `
-      <i class="fas fa-wifi-slash"></i>
-      <span>You're offline — expenses are saved locally</span>
-      <div id="sync-badge-container" style="display:none;">
-        <button id="sync-now-btn" onclick="triggerSyncNow()" aria-label="Sync pending transactions">
-          <i class="fas fa-sync-alt"></i> Sync Now <span id="sync-count-badge">0</span>
-        </button>
-      </div>
-    `;
+    // Only show if we actually have something pending, otherwise be silent
+    // We'll rely on updateSyncBadge to show the floating btn
   } else {
-    networkBanner.innerHTML = `
-      <i class="fas fa-wifi"></i>
-      <span>Back online!</span>
-    `;
-    setTimeout(() => {
-      if (networkBanner) networkBanner.classList.add('network-banner--hide');
-    }, 3000);
+    // Back online
+    if (networkBanner && !networkBanner.classList.contains('network-banner--hide')) {
+      networkBanner.className = `network-banner network-banner--online`;
+      networkBanner.innerHTML = `<i class="fas fa-wifi"></i> <span>Reconnected</span>`;
+      setTimeout(() => networkBanner.classList.add('network-banner--hide'), 2000);
+    }
   }
-
-  networkBanner.classList.remove('network-banner--hide');
 }
 
 function updateSyncBadge(count) {
@@ -128,7 +116,6 @@ window.triggerSyncNow = async function () {
 // ───────────────────────────────────────────
 function handleOnline() {
   showNetworkBanner('online');
-  showToastGlobal('🌐 Connected! Syncing pending data…', 'info');
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => {
@@ -142,8 +129,7 @@ function handleOnline() {
 }
 
 function handleOffline() {
-  showNetworkBanner('offline');
-  showToastGlobal('📡 Gone offline — don\'t worry, we\'ll save your data locally.', 'warning');
+  // Silent – no toast
 }
 
 window.addEventListener('online', handleOnline);

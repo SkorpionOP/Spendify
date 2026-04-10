@@ -1,9 +1,4 @@
-// =============================================
-//  SPENDLY SERVICE WORKER  –  v5
-//  Full offline-first with IndexedDB sync queue
-// =============================================
-
-const CACHE_VERSION = 'spendly-v5';
+const CACHE_VERSION = 'spendly-v8';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 const ALL_CACHES    = [STATIC_CACHE, PAGE_CACHE];
@@ -120,6 +115,7 @@ async function broadcastToClients(msg) {
 //  INSTALL – pre-cache everything
 // ───────────────────────────────────────────
 self.addEventListener('install', event => {
+  console.log(`[Spendly] Installing v${CACHE_VERSION}`);
   self.skipWaiting();
   event.waitUntil(
     (async () => {
@@ -161,17 +157,74 @@ self.addEventListener('activate', event => {
 });
 
 // ───────────────────────────────────────────
+//  Domains the SW must NEVER touch
+//  (Firebase auth, Google OAuth, CDN APIs…)
+// ───────────────────────────────────────────
+const BYPASS_HOSTS = [
+  'googleapis.com',
+  'firebaseapp.com',
+  'firebase.googleapis.com',
+  'firebaseinstallations.googleapis.com',
+  'identitytoolkit.googleapis.com',
+  'securetoken.googleapis.com',
+  'oauth2.googleapis.com',
+  'accounts.google.com',
+  'firestore.googleapis.com',
+  'fcmregistrations.googleapis.com',
+  'firebasestorage.googleapis.com',
+  'graph.facebook.com',
+  'api.github.com',
+  'cdn.jsdelivr.net',
+  'firebase.com',
+  'google.com',
+  'gstatic.com',
+];
+
+// Routes that must never be handled offline (Auth/Security)
+const AUTH_ROUTES = ['/login', '/signup', '/auth/firebase', '/logout'];
+
+function shouldBypass(url) {
+  if (!url.startsWith('http')) return true;
+  try {
+    const u = new URL(url);
+    const { hostname, pathname } = u;
+
+    // 1. Bypass any external domain that isn't our own
+    if (hostname !== self.location.hostname) {
+      // Allow specific CDNs to be cached (Fonts, etc.)
+      const isCDN = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com'].some(h => hostname === h);
+      if (!isCDN) return true;
+    }
+
+    // 2. Bypass known auth/API domains
+    if (BYPASS_HOSTS.some(h => hostname === h || hostname.endsWith('.' + h))) return true;
+
+    // 3. Bypass Firebase internal routes
+    if (pathname.includes('/__/auth/') || pathname.includes('/firebase-')) return true;
+
+    // 4. Bypass app auth routes
+    if (AUTH_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'))) return true;
+
+  } catch (e) {
+    return true;
+  }
+  return false;
+}
+
+// ───────────────────────────────────────────
 //  FETCH – network-first for pages, cache-first for static
 // ───────────────────────────────────────────
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET/POST, chrome-extension, non-http
-  if (!request.url.startsWith('http')) return;
+  // ── Hard bypass – never intercept auth / external requests ──
+  if (shouldBypass(request.url)) return;
 
-  // ── POST requests ──────────────────────────
+  // ── POST requests (same-origin app routes only) ─────────────
   if (request.method === 'POST') {
+    // Only intercept POST to our own server routes
+    if (url.hostname !== self.location.hostname) return;
     event.respondWith(handlePost(request));
     return;
   }
@@ -202,41 +255,31 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request, { credentials: 'include' })
         .then(res => {
-          // Only cache successful, non-redirected responses
+          // If network is up, update cache and return the real response
           if (res && res.ok && !res.redirected) {
             const clone = res.clone();
             caches.open(PAGE_CACHE).then(c => c.put(request, clone));
           }
           return res;
         })
-        .catch(() =>
-          caches.match(request).then(cached =>
-            cached ||
-            caches.match('/dashboard').then(dash =>
-              dash ||
-              new Response(
-                `<!DOCTYPE html><html><head><meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width,initial-scale=1">
-                <title>Offline – Spendly</title>
-                <style>
-                  body{background:#02020a;color:#f0f4ff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:2rem}
-                  h1{font-size:2rem;margin-bottom:1rem;color:#6366f1}
-                  p{color:#94a3b8;margin-bottom:2rem}
-                  button{background:#6366f1;color:#fff;border:none;padding:.85rem 2rem;border-radius:12px;font-size:1rem;cursor:pointer}
-                </style></head>
-                <body>
-                  <div>
-                    <div style="font-size:4rem;margin-bottom:1rem">📡</div>
-                    <h1>You're Offline</h1>
-                    <p>Spendly is in offline mode. Your expenses are saved locally<br>and will sync when you reconnect.</p>
-                    <button onclick="location.reload()">Try Again</button>
-                  </div>
-                </body></html>`,
+        .catch(() => {
+          // Network failed – try cache
+          return caches.match(request).then(cached => {
+            if (cached) return cached;
+            
+            // If it's a navigational request and we have NO cache, show the minimal offline page
+            if (request.mode === 'navigate') {
+              return new Response(
+                `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Offline – Spendly</title>
+                <style>body{background:#02020a;color:#94a3b8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+                .box{text-align:center;padding:2rem}h1{color:#6366f1;font-size:1.5rem}button{background:#6366f1;color:#fff;border:none;padding:.7rem 1.5rem;border-radius:8px;cursor:pointer;margin-top:1rem}</style></head>
+                <body><div class="box"><h1>Connection Lost</h1><p>We'll reconcile your data once you're back online.</p><button onclick="location.reload()">Retry</button></div></body></html>`,
                 { status: 200, headers: { 'Content-Type': 'text/html' } }
-              )
-            )
-          )
-        )
+              );
+            }
+            return new Response("Offline", { status: 503 });
+          });
+        })
     );
   }
 });

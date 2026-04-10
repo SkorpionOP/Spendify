@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, jsonify
 import psycopg2
 from psycopg2.extras import DictCursor
+from psycopg2 import pool as pg_pool
 from datetime import date, datetime
 import calendar
 import os
@@ -28,11 +29,26 @@ def cat_emoji(category):
 app.jinja_env.globals['cat_emoji'] = cat_emoji
 
 # -----------------------------
-# DATABASE CONNECTION (POSTGRESQL)
+# CONNECTION POOL (re-uses TCP connections, eliminates per-request handshake)
 # -----------------------------
+_pool = None
+
+def get_pool():
+    global _pool
+    if _pool is None:
+        db_url = os.environ.get("DATABASE_URL")
+        _pool = pg_pool.ThreadedConnectionPool(
+            minconn=2,
+            maxconn=10,
+            dsn=db_url,
+            cursor_factory=DictCursor
+        )
+    return _pool
+
 class PostgresWrapper:
     def __init__(self, conn):
         self.conn = conn
+        self.last_cursor = None
     
     def execute(self, query, params=None):
         query = query.replace('?', '%s')
@@ -64,11 +80,14 @@ class PostgresWrapper:
         self.conn.commit()
         
     def close(self):
-        self.conn.close()
+        # Return connection to pool instead of closing TCP socket
+        try:
+            get_pool().putconn(self.conn)
+        except Exception:
+            pass
 
 def get_db_connection():
-    db_url = os.environ.get("DATABASE_URL")
-    conn = psycopg2.connect(db_url, cursor_factory=DictCursor)
+    conn = get_pool().getconn()
     return PostgresWrapper(conn)
 
 # Initialize tables
@@ -128,17 +147,16 @@ except Exception as e:
     print("Database initialization error:", e)
 
 
-def handle_new_month(user_id):
-    conn = get_db_connection()
+def handle_new_month(user_id, conn):
+    """Reuse the caller's connection — avoids opening a second TCP connection per dashboard load."""
     current_month = datetime.today().strftime("%Y-%m")
 
     existing = conn.execute(
-        "SELECT * FROM monthly_budget WHERE user_id=? AND month=?",
+        "SELECT id FROM monthly_budget WHERE user_id=? AND month=?",
         (user_id, current_month)
     ).fetchone()
 
     if existing:
-        conn.close()
         return
 
     last = conn.execute(
@@ -151,30 +169,24 @@ def handle_new_month(user_id):
     if last:
         last_month = last['month']
         total = conn.execute(
-            "SELECT SUM(amount) as total FROM expenses WHERE user_id=? AND date LIKE ?",
+            "SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id=? AND date LIKE ?",
             (user_id, last_month + "%")
         ).fetchone()
-        total_spent = total['total'] if total['total'] else 0
+        total_spent = total['total']
         old_needs = last['needs']
         old_savings = last['savings']
         if total_spent <= old_needs:
-            remaining_needs = old_needs - total_spent
-            remaining_savings = old_savings
+            carry_forward = (old_needs - total_spent) + old_savings
         else:
-            remaining_needs = 0
-            extra = total_spent - old_needs
-            remaining_savings = old_savings - extra
-        carry_forward = remaining_needs + remaining_savings
+            carry_forward = max(0, old_savings - (total_spent - old_needs))
 
     finance = conn.execute(
-        "SELECT * FROM finance WHERE user_id=? ORDER BY id DESC", (user_id,)
+        "SELECT salary, needs_percent, savings_percent FROM finance WHERE user_id=?", (user_id,)
     ).fetchone()
 
     salary = finance['salary']
-    needs_percent = finance['needs_percent']
-    savings_percent = finance['savings_percent']
-    needs = salary * (needs_percent / 100)
-    savings = salary * (savings_percent / 100) + carry_forward
+    needs = salary * (finance['needs_percent'] / 100)
+    savings = salary * (finance['savings_percent'] / 100) + carry_forward
 
     conn.execute(
         "INSERT INTO monthly_budget (user_id, month, needs, savings) VALUES (?, ?, ?, ?)",
@@ -185,7 +197,6 @@ def handle_new_month(user_id):
         (needs, savings, user_id)
     )
     conn.commit()
-    conn.close()
 
 @app.context_processor
 def inject_firebase_config():
@@ -198,6 +209,17 @@ def inject_firebase_config():
         FIREBASE_APP_ID=os.getenv('FIREBASE_APP_ID'),
         FIREBASE_MEASUREMENT_ID=os.getenv('FIREBASE_MEASUREMENT_ID')
     )
+
+@app.after_request
+def add_cache_headers(response):
+    """Cache static files aggressively; never cache HTML pages."""
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=86400'  # 24h
+    elif request.path in ('/sw.js', '/manifest.json'):
+        response.headers['Cache-Control'] = 'public, max-age=3600'   # 1h
+    else:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
 
 # -----------------------------
 # PWA ROUTES
@@ -316,63 +338,53 @@ def dashboard():
         return redirect('/login')
 
     today = datetime.today()
-    year = today.year
-    month = today.month
-    month_str = f"{year}-{month:02d}"
+    month_str = f"{today.year}-{today.month:02d}"
+    uid = session['user_id']
 
     conn = get_db_connection()
     finance = conn.execute(
-        "SELECT * FROM finance WHERE user_id=? ORDER BY id DESC", (session['user_id'],)
+        "SELECT * FROM finance WHERE user_id=?", (uid,)
     ).fetchone()
 
     if not finance or finance['salary'] is None:
-        if conn: conn.close()
+        conn.close()
         return redirect('/setup')
 
-    handle_new_month(session['user_id'])
+    # Pass conn so no second connection is opened
+    handle_new_month(uid, conn)
 
-    # Reload finance after month handling
-    finance = conn.execute(
-        "SELECT * FROM finance WHERE user_id=? ORDER BY id DESC", (session['user_id'],)
-    ).fetchone()
+    # Single query for all dashboard data
+    row = conn.execute("""
+        SELECT
+            f.needs, f.savings, f.salary,
+            COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s AND date LIKE %s), 0) AS month_spent,
+            COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s), 0) AS total_ever
+        FROM finance f WHERE f.user_id=%s
+    """, (uid, month_str + "%", uid, uid)).fetchone()
 
     expenses = conn.execute(
-        "SELECT * FROM expenses WHERE user_id=? ORDER BY date DESC, id DESC LIMIT 10",
-        (session['user_id'],)
+        "SELECT * FROM expenses WHERE user_id=? ORDER BY date DESC, id DESC LIMIT 10", (uid,)
     ).fetchall()
 
-    categories = conn.execute(
-        """SELECT category, SUM(amount) as total
-           FROM expenses WHERE user_id=?
-           GROUP BY category""",
-        (session['user_id'],)
-    ).fetchall()
-
-    top_category = None
-    if categories:
-        top_category = max(categories, key=lambda x: x['total'])
-
-    total = conn.execute(
-        "SELECT SUM(amount) as total FROM expenses WHERE user_id=? AND date LIKE ?",
-        (session['user_id'], month_str + "%")
-    ).fetchone()
+    top_cat = conn.execute("""
+        SELECT category, SUM(amount) as total FROM expenses
+        WHERE user_id=? GROUP BY category ORDER BY total DESC LIMIT 1
+    """, (uid,)).fetchone()
 
     conn.close()
 
-    total_spent = total['total'] if total['total'] else 0
-    needs = finance['needs']
-    savings = finance['savings']
+    needs        = row['needs']
+    savings      = row['savings']
+    total_spent  = row['month_spent']
 
     if total_spent <= needs:
-        used_needs = total_spent
-        savings_used = 0
+        used_needs = total_spent; savings_used = 0
     else:
-        used_needs = needs
-        savings_used = total_spent - needs
+        used_needs = needs; savings_used = total_spent - needs
 
-    remaining_needs = needs - used_needs
+    remaining_needs   = needs - used_needs
     remaining_savings = savings - savings_used
-    usage_percent = round((total_spent / needs) * 100, 2) if needs > 0 else 0
+    usage_percent     = round((total_spent / needs) * 100, 2) if needs > 0 else 0
 
     alert = request.args.get('alert') or session.pop('alert', None)
     if not alert:
@@ -385,13 +397,13 @@ def dashboard():
 
     return render_template(
         'dashboard.html',
-        finance=finance,
+        finance=row,
         expenses=expenses,
         total_spent=total_spent,
         remaining_needs=remaining_needs,
         remaining_savings=remaining_savings,
         savings_used=savings_used,
-        top_category=top_category,
+        top_category=top_cat,
         alert=alert
     )
 
@@ -692,47 +704,36 @@ def analysis():
     if 'user_id' not in session:
         return redirect('/login')
 
+    uid = session['user_id']
     conn = get_db_connection()
     today = datetime.today()
     month_str = f"{today.year}-{today.month:02d}"
 
-    total = conn.execute(
-        "SELECT SUM(amount) as total FROM expenses WHERE user_id=? AND date LIKE ?",
-        (session['user_id'], f"{month_str}%")
-    ).fetchone()
-    total_spent = total['total'] if total['total'] else 0
-
+    # Consolidate: categories + daily trend + finance in 3 queries instead of 5
     categories = conn.execute(
         """SELECT category, SUM(amount) as total FROM expenses
            WHERE user_id=? AND date LIKE ? GROUP BY category ORDER BY total DESC""",
-        (session['user_id'], f"{month_str}%")
+        (uid, f"{month_str}%")
     ).fetchall()
 
-    days_row = conn.execute(
-        "SELECT COUNT(DISTINCT date) as days FROM expenses WHERE user_id=? AND date LIKE ?",
-        (session['user_id'], f"{month_str}%")
-    ).fetchone()
-
-    num_days = days_row['days'] if days_row['days'] else 1
-    daily_avg = total_spent / num_days
-
-    finance = conn.execute(
-        "SELECT * FROM finance WHERE user_id=? ORDER BY id DESC", (session['user_id'],)
-    ).fetchone()
-
-    # Daily trend logic
     daily_stats = conn.execute(
         """SELECT date, SUM(amount) as total FROM expenses
            WHERE user_id=? AND date LIKE ? GROUP BY date ORDER BY date ASC""",
-        (session['user_id'], f"{month_str}%")
+        (uid, f"{month_str}%")
     ).fetchall()
 
-    daily_dates = [d['date'][-2:] for d in daily_stats]
-    daily_totals = [d['total'] for d in daily_stats]
-
-    labels = [cat['category'] for cat in categories]
-    values = [cat['total'] for cat in categories]
+    finance = conn.execute(
+        "SELECT needs FROM finance WHERE user_id=?", (uid,)
+    ).fetchone()
     conn.close()
+
+    total_spent  = sum(c['total'] for c in categories)
+    num_days     = len(daily_stats) or 1
+    daily_avg    = total_spent / num_days
+    daily_dates  = [d['date'][-2:] for d in daily_stats]
+    daily_totals = [d['total'] for d in daily_stats]
+    labels  = [c['category'] for c in categories]
+    values  = [c['total'] for c in categories]
 
     return render_template(
         'analysis.html',
@@ -773,34 +774,33 @@ def analysis_by_month(month):
     if 'user_id' not in session:
         return redirect('/login')
 
+    uid = session['user_id']
     conn = get_db_connection()
-    total = conn.execute(
-        "SELECT SUM(amount) as total FROM expenses WHERE user_id=? AND date LIKE ?",
-        (session['user_id'], f"{month}%")
-    ).fetchone()
-    total_spent = total['total'] if total['total'] else 0
 
     categories = conn.execute(
         """SELECT category, SUM(amount) as total FROM expenses
            WHERE user_id=? AND date LIKE ? GROUP BY category ORDER BY total DESC""",
-        (session['user_id'], f"{month}%")
+        (uid, f"{month}%")
     ).fetchall()
 
-    days_row = conn.execute(
-        "SELECT COUNT(DISTINCT date) as days FROM expenses WHERE user_id=? AND date LIKE ?",
-        (session['user_id'], f"{month}%")
-    ).fetchone()
-
-    num_days = days_row['days'] if days_row['days'] else 1
-    daily_avg = total_spent / num_days
+    daily_stats = conn.execute(
+        """SELECT date, SUM(amount) as total FROM expenses
+           WHERE user_id=? AND date LIKE ? GROUP BY date ORDER BY date ASC""",
+        (uid, f"{month}%")
+    ).fetchall()
 
     finance = conn.execute(
-        "SELECT * FROM finance WHERE user_id=? ORDER BY id DESC", (session['user_id'],)
+        "SELECT needs FROM finance WHERE user_id=?", (uid,)
     ).fetchone()
-
-    labels = [cat['category'] for cat in categories]
-    values = [cat['total'] for cat in categories]
     conn.close()
+
+    total_spent  = sum(c['total'] for c in categories)
+    num_days     = len(daily_stats) or 1
+    daily_avg    = total_spent / num_days
+    daily_dates  = [d['date'][-2:] for d in daily_stats]
+    daily_totals = [d['total'] for d in daily_stats]
+    labels  = [c['category'] for c in categories]
+    values  = [c['total'] for c in categories]
 
     return render_template(
         'analysis.html',
@@ -809,7 +809,9 @@ def analysis_by_month(month):
         daily_avg=daily_avg,
         needs=finance['needs'],
         labels=labels,
-        values=values
+        values=values,
+        daily_dates=daily_dates,
+        daily_totals=daily_totals
     )
 
 # -----------------------------

@@ -1,7 +1,7 @@
 {
   "name": "Spendly",
   "short_name": "Spendly",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#03030b",
   "theme_color": "#6366f1",

@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard – Spendly</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@400;600;700;800&display=swap&font-display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>body { padding: 0; }</style>
@@ -59,14 +61,13 @@
     </a>
 </div>
 
+<div id="toast-container"></div>
+
+{% if alert %}
+<span id="page-alert" data-msg="{{ alert }}" style="display:none;"></span>
+{% endif %}
+
 <div class="page-wrapper container fade-in" style="padding-top: 2rem;">
-    
-    {% if alert %}
-    <div class="glass-card mb-2" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.2); display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem;">
-        <i class="fas fa-circle-info" style="color: var(--primary);"></i>
-        <span style="font-size: 0.9rem; font-weight: 600;">{{ alert }}</span>
-    </div>
-    {% endif %}
 
     <div class="stat-grid">
         <div class="stat-card">
@@ -254,6 +255,47 @@ function renderCategories() {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('expense-date').valueAsDate = new Date();
     renderCategories();
+
+    // Toast system
+    window.showToast = function(msg, type = 'info') {
+        const ICONS = {
+            success: 'fa-circle-check',
+            error:   'fa-circle-xmark',
+            warning: 'fa-triangle-exclamation',
+            info:    'fa-circle-info'
+        };
+        const TITLES = { success: 'Success', error: 'Error', warning: 'Heads Up', info: 'Info' };
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas ${ICONS[type] || ICONS.info}"></i></div>
+            <div class="toast-body">
+                <div class="toast-title">${TITLES[type] || 'Notice'}</div>
+                <div class="toast-msg">${msg}</div>
+            </div>
+            <button class="toast-dismiss" onclick="this.closest('.toast').classList.add('toast-hide'); setTimeout(()=>this.closest('.toast').remove(),400);">✕</button>
+            <div class="toast-progress"></div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('toast-hide');
+            setTimeout(() => toast.remove(), 400);
+        }, 4500);
+    };
+
+    // Show server alert as toast
+    const alertEl = document.getElementById('page-alert');
+    if (alertEl) {
+        const msg = alertEl.dataset.msg;
+        let type = 'info';
+        if (msg.startsWith('✅')) type = 'success';
+        else if (msg.startsWith('❌')) type = 'error';
+        else if (msg.startsWith('⚠️') || msg.startsWith('💳')) type = 'warning';
+        else if (msg.startsWith('🚨')) type = 'error';
+        else if (msg.startsWith('🗑️')) type = 'info';
+        showToast(msg, type);
+    }
 });
 </script>
 

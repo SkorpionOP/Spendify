@@ -1,11 +1,10 @@
-const CACHE_NAME = 'spendly-cache-v1';
+const CACHE_NAME = 'spendly-cache-v2';
 const DB_NAME = 'spendly_offline';
 const STORE_NAME = 'sync_queue';
 
 const urlsToCache = [
-  '/',
+  '/dashboard',
   '/login',
-  '/signup',
   '/static/style.css',
   '/manifest.json'
 ];
@@ -69,9 +68,16 @@ self.addEventListener('fetch', event => {
         event.respondWith(
             fetch(event.request).then(response => {
                 const resClone = response.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, resClone);
-                });
+                if (event.request.url.startsWith('http')) {
+                    // Prevent overwriting the /dashboard cache key with the /login page if session expires online
+                    if (response.redirected && event.request.url.endsWith('/dashboard')) {
+                        // Skip caching
+                    } else {
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, resClone);
+                        });
+                    }
+                }
                 return response;
             }).catch(() => {
                 return caches.match(event.request).then(res => {

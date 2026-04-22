@@ -218,95 +218,106 @@ window.showToastGlobal = function (msg, type = 'info') {
 };
 
 // ───────────────────────────────────────────
-//  PWA Install Prompt
+//  PWA Install Prompt (Header Integrated)
 // ───────────────────────────────────────────
 let deferredPrompt = null;
 
-// Floating install button (shown when dismissed)
-const floatingInstallBtn = document.createElement('button');
-floatingInstallBtn.id = 'pwa-install-float';
-floatingInstallBtn.style.display = 'none';
-floatingInstallBtn.innerHTML = `<i class="fas fa-download"></i>`;
-floatingInstallBtn.title = 'Install Spendly';
-document.addEventListener('DOMContentLoaded', () => document.body.appendChild(floatingInstallBtn));
-
-floatingInstallBtn.addEventListener('mouseover', () => {
-  floatingInstallBtn.style.background = 'var(--primary, #6366f1)';
-  floatingInstallBtn.style.color = 'white';
-});
-floatingInstallBtn.addEventListener('mouseout', () => {
-  floatingInstallBtn.style.background = 'rgba(99, 102, 241, 0.2)';
-  floatingInstallBtn.style.color = 'var(--primary, #6366f1)';
-});
-
-// Install banner (shown on first visit)
-const installBanner = document.createElement('div');
-installBanner.id = 'pwa-install-banner';
-installBanner.style.display = 'none';
-installBanner.innerHTML = `
-  <div class="install-banner-icon">
-    <i class="fas fa-mobile-alt"></i>
-  </div>
-  <div class="install-banner-text">
-    <strong>Install Spendly</strong>
-    <span>Add to home screen for a native app experience</span>
-  </div>
-  <div class="install-banner-actions">
-    <button id="pwa-dismiss-btn">Later</button>
-    <button id="pwa-install-btn"><i class="fas fa-download"></i> Install</button>
-  </div>
+// The Banner Prompt (Full State)
+const headerPrompt = document.createElement('div');
+headerPrompt.className = 'pwa-bottom-banner';
+headerPrompt.style.display = 'none';
+headerPrompt.innerHTML = `
+    <div style="display:flex; align-items:center; gap: 1rem; flex:1;">
+        <div style="background:var(--primary); width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.2rem;">
+            <i class="fas fa-download"></i>
+        </div>
+        <div>
+            <strong style="display:block; color:#fff; margin-bottom:0.2rem;">Install Spendly</strong>
+            <span style="font-size:0.8rem; color:var(--text-tertiary);">Add to home screen for offline access</span>
+        </div>
+    </div>
+    <div class="actions" style="display:flex; gap:0.5rem;">
+        <button class="pwa-btn-dismiss">Later</button>
+        <button class="pwa-btn-install">Install</button>
+    </div>
 `;
 
-async function triggerInstall() {
-  if (!deferredPrompt) return;
-  installBanner.classList.add('install-banner--hide');
-  floatingInstallBtn.style.display = 'none';
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  deferredPrompt = null;
-  if (outcome === 'accepted') {
-    showToastGlobal('🎉 Spendly installed! Find it on your home screen.', 'success');
-  }
+// The Floating Button (Dismissed State)
+const miniBtn = document.createElement('button');
+miniBtn.className = 'pwa-floating-btn';
+miniBtn.style.display = 'none';
+miniBtn.innerHTML = `<i class="fas fa-download"></i>`;
+miniBtn.title = 'Install Spendly';
+
+window.triggerInstall = async function() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (outcome === 'accepted') {
+            headerPrompt.remove();
+            miniBtn.remove();
+            showToastGlobal('🎉 Welcome to Spendly App!', 'success');
+        }
+    } else {
+        // Fallback for iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            showToastGlobal('Tap the Share icon (⎙) at the bottom, then select "Add to Home Screen" 📱', 'info');
+        }
+    }
+};
+
+function mountHeaderUI() {
+    const path = location.pathname;
+    if (path === '/' || path === '/login' || path === '/signup') return;
+
+    if (!document.body.contains(headerPrompt)) document.body.appendChild(headerPrompt);
+    if (!document.body.contains(miniBtn)) document.body.appendChild(miniBtn);
+
+    const pwaDismissed = localStorage.getItem('pwa-banner-dismissed') === 'true';
+
+    if (pwaDismissed) {
+        headerPrompt.style.display = 'none';
+        miniBtn.style.display = 'flex';
+    } else {
+        headerPrompt.style.display = 'flex';
+        miniBtn.style.display = 'none';
+    }
+
+    headerPrompt.querySelector('.pwa-btn-install').onclick = triggerInstall;
+    headerPrompt.querySelector('.pwa-btn-dismiss').onclick = () => {
+        headerPrompt.classList.add('slide-out');
+        setTimeout(() => {
+            headerPrompt.style.display = 'none';
+            miniBtn.style.display = 'flex';
+            localStorage.setItem('pwa-banner-dismissed', 'true');
+        }, 300);
+    };
+    miniBtn.onclick = triggerInstall;
 }
 
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-
-  const path = location.pathname;
-  if (path === '/' || path === '/login' || path === '/signup') return;
-
-  document.addEventListener('DOMContentLoaded', () => {
-    document.body.appendChild(installBanner);
-
-    if (localStorage.getItem('pwa-dismissed') === 'true') {
-      floatingInstallBtn.style.display = 'flex';
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountHeaderUI);
     } else {
-      installBanner.style.display = 'flex';
-      installBanner.style.animation = 'slideUpIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards';
-
-      document.getElementById('pwa-install-btn').addEventListener('click', triggerInstall);
-      document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
-        installBanner.classList.add('install-banner--hide');
-        setTimeout(() => {
-          installBanner.style.display = 'none';
-          floatingInstallBtn.style.display = 'flex';
-          floatingInstallBtn.animate(
-            [{ opacity: 0, transform: 'scale(0.5)' }, { opacity: 1, transform: 'scale(1)' }],
-            { duration: 400, fill: 'forwards', easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)' }
-          );
-          localStorage.setItem('pwa-dismissed', 'true');
-        }, 400);
-      });
+        mountHeaderUI();
     }
-  });
 });
 
-floatingInstallBtn.addEventListener('click', triggerInstall);
+// Explicitly handle iOS where beforeinstallprompt doesn't fire
+document.addEventListener('DOMContentLoaded', () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) {
+        mountHeaderUI();
+    }
+});
 
 window.addEventListener('appinstalled', () => {
-  deferredPrompt = null;
-  floatingInstallBtn.style.display = 'none';
-  installBanner.style.display = 'none';
-  showToastGlobal('🎉 Spendly is installed!', 'success');
+    deferredPrompt = null;
+    headerPrompt.remove();
+    miniBtn.remove();
 });

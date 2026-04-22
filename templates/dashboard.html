@@ -9,7 +9,223 @@
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@400;600;700;800&display=swap&font-display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>body { padding: 0; }</style>
+    <style>
+    body { padding: 0; }
+
+    /* ── FOCUS MODE ── */
+    body.focus-mode .hideable { display: none !important; }
+    body.focus-mode .focus-only { display: flex !important; }
+    /* Page content must not cover focus overlay */
+    body.focus-mode .page-wrapper { display: none !important; }
+    body.focus-mode .navbar { display: none !important; }
+    body.focus-mode .mobile-nav { display: none !important; }
+
+    .focus-only {
+      display: none;
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg-pure);
+      flex-direction: column; align-items: center; justify-content: center;
+      animation: fadeIn .4s ease-out;
+    }
+    .focus-banner {
+      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25);
+      border-radius: 24px; padding: 2.5rem 3rem; text-align: center; max-width: 420px; width: 90%;
+      box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(16,185,129,.1);
+      position: relative;
+    }
+    .focus-week-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: rgba(255,255,255,.35); font-weight: 700; margin-bottom: .5rem; }
+    .focus-amount {
+      font-size: clamp(3rem, 10vw, 5.5rem); font-weight: 800; letter-spacing: -0.05em;
+      line-height: 1; margin-bottom: .5rem;
+    }
+    .focus-amount.good { color: #10b981; text-shadow: 0 0 40px rgba(16,185,129,.4); }
+    .focus-amount.warn { color: #f59e0b; text-shadow: 0 0 40px rgba(245,158,11,.4); }
+    .focus-amount.over { color: #ef4444; text-shadow: 0 0 40px rgba(239,68,68,.4); }
+    .focus-sub { font-size: .88rem; color: rgba(255,255,255,.4); margin-bottom: 1.75rem; }
+    .focus-exit-btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .75rem 1.75rem; border-radius: 12px; font-size: .9rem; font-weight: 700;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.7); cursor: pointer; transition: all .25s;
+    }
+    .focus-exit-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+    /* ── FOCUS MODE BUTTON ── */
+    .focus-toggle-btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .5rem 1rem; border-radius: 99px; font-size: .72rem; font-weight: 700;
+      background: rgba(139,92,246,.1); border: 1px solid rgba(139,92,246,.25); color: #a78bfa;
+      cursor: pointer; transition: all .25s; text-transform: uppercase; letter-spacing: .08em;
+      white-space: nowrap;
+    }
+    .focus-toggle-btn:hover { background: rgba(139,92,246,.18); border-color: rgba(139,92,246,.4); }
+    .focus-toggle-btn svg { flex-shrink: 0; }
+
+    /* ── HEALTH SCORE MINI RING ── */
+    .health-mini { display: flex; align-items: center; gap: 1rem; }
+    .health-ring-wrap { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+    .health-ring-svg { width: 56px; height: 56px; transform: rotate(-90deg); }
+    .health-ring-bg { fill: none; stroke: rgba(255,255,255,.06); stroke-width: 5; }
+    .health-ring-fill { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1); }
+    .health-ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; color: #fff; }
+    .health-info { display: flex; flex-direction: column; gap: .15rem; }
+    .health-title { font-size: .72rem; font-weight: 700; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .08em; }
+    .health-score-text { font-size: 1rem; font-weight: 800; color: #10b981; }
+
+    /* ── BENTO DASHBOARD GRID ── */
+    .db-header {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+      gap: 1rem; margin-bottom: 1.5rem; padding-top: 1.5rem;
+    }
+    .db-greeting { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; color: #fff; }
+    .db-date { font-size: .8rem; color: rgba(255,255,255,.35); font-weight: 500; margin-top: .15rem; }
+    .db-header-right { display: flex; align-items: center; gap: .75rem; }
+
+    /* Bento Grid */
+    .bento-db {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: .75rem; margin-bottom: 1.25rem;
+    }
+    .db-col-3  { grid-column: span 3; }
+    .db-col-4  { grid-column: span 4; }
+    .db-col-6  { grid-column: span 6; }
+    .db-col-8  { grid-column: span 8; }
+    .db-col-12 { grid-column: span 12; }
+
+    /* ── MOBILE-FIRST CATEGORY CHIPS ── */
+    .category-grid {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+      gap: .45rem;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: .25rem 2px;
+    }
+    .cat-chip {
+      padding: .55rem .35rem !important;
+      border-radius: 10px !important;
+      background: rgba(255,255,255,.04) !important;
+      border: 1.5px solid rgba(255,255,255,.08) !important;
+      display: flex !important; flex-direction: column !important;
+      align-items: center !important; gap: .2rem !important;
+      cursor: pointer !important; transition: all .18s !important;
+      min-height: 52px;
+    }
+    .cat-chip span:first-child { font-size: 1.2rem !important; line-height: 1; }
+    .cat-chip span:last-child  { font-size: .62rem !important; color: rgba(255,255,255,.5); font-weight: 600 !important; text-align:center; line-height:1.2; }
+    .cat-chip.selected {
+      background: rgba(16,185,129,.18) !important;
+      border-color: #10b981 !important;
+      box-shadow: 0 0 10px rgba(16,185,129,.25);
+    }
+    .cat-chip.selected span:last-child { color: #34d399 !important; }
+    .cat-chip:hover:not(.selected) { background: rgba(255,255,255,.09) !important; border-color: rgba(255,255,255,.18) !important; }
+
+    /* Bento stat tile */
+    .bento-stat {
+      background: linear-gradient(145deg, rgba(255,255,255,.04) 0%, var(--bg-card-elevated) 100%);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.25rem 1rem;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 4px 20px rgba(0,0,0,.2);
+      display: flex; flex-direction: column; gap: .35rem;
+      transition: all .3s; position: relative; overflow: hidden; cursor: default;
+    }
+    .bento-stat::after { content:''; position:absolute; top:0;left:0;right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent); }
+    .bento-stat:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.14); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(0,0,0,.35); }
+    .bento-stat .stat-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--text-tertiary); }
+    .bento-stat .stat-value { font-size:1.65rem; font-weight:800; color:#fff; letter-spacing:-0.03em; line-height:1.1; }
+    .bento-stat .stat-delta { font-size:.68rem; font-weight:700; display:flex; align-items:center; gap:.2rem; }
+    .delta-up { color:#10b981; } .delta-down { color:#ef4444; } .delta-warn { color:#f59e0b; }
+
+    /* Budget progress card */
+    .budget-card {
+      background: rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.07);
+      border-radius:var(--radius-lg); padding:1.5rem; position:relative; overflow:hidden;
+      transition:all .3s;
+    }
+    .budget-pct-badge {
+      position:absolute; top:1.25rem; right:1.25rem;
+      font-size:1.6rem; font-weight:800;
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+    .budget-progress-track {
+      height:8px; background:rgba(255,255,255,.05); border-radius:99px; overflow:hidden; margin:1rem 0 .5rem;
+    }
+    .budget-progress-fill {
+      height:100%; border-radius:99px;
+      box-shadow: 0 0 12px currentColor;
+      transition: width 1.2s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* Add transaction card */
+    .add-card { background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.07); border-radius:var(--radius-lg); padding:1.25rem; }
+
+    /* Main grid: always single-col on mobile */
+    #main-grid { display: flex; flex-direction: column; gap: 1rem; }
+    @media (min-width: 900px) {
+      #main-grid { display: grid; grid-template-columns: minmax(0,5fr) minmax(0,7fr); }
+    }
+
+    /* Recent activity card */
+    .activity-list { display:flex; flex-direction:column; gap:.5rem; }
+    .activity-item {
+      display:flex; align-items:center; gap:.85rem;
+      padding:.75rem .9rem; border-radius:12px;
+      background:rgba(255,255,255,.02); border:1px solid transparent;
+      transition:all .2s; cursor:default;
+    }
+    .activity-item:hover { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.06); }
+    .activity-icon {
+      width:38px; height:38px; border-radius:10px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.1rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07);
+    }
+    .activity-info { flex:1; min-width:0; }
+    .activity-cat { font-size:.8rem; font-weight:700; color:#fff; }
+    .activity-note { font-size:.7rem; color:rgba(255,255,255,.35); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .activity-right { text-align:right; flex-shrink:0; }
+    .activity-amt { font-size:.9rem; font-weight:800; color:#fff; }
+    .activity-date { font-size:.65rem; color:rgba(255,255,255,.3); }
+    .activity-actions { display:flex; gap:.3rem; align-items:center; }
+    .act-btn {
+      width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+      color:rgba(255,255,255,.4); cursor:pointer; transition:all .2s; font-size:.75rem;
+    }
+    .act-btn:hover { background:rgba(255,255,255,.09); color:#fff; }
+    .act-btn.danger:hover { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.25); color:#ef4444; }
+
+    /* Top-up card */
+    .topup-card { background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.07); border-radius:var(--radius-lg); padding:1.25rem; }
+
+    /* Empty state */
+    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem 1rem; gap:.85rem; }
+    .empty-icon { width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; }
+    .empty-title { font-size:.95rem; font-weight:700; color:rgba(255,255,255,.5); }
+    .empty-sub { font-size:.78rem; color:rgba(255,255,255,.25); text-align:center; max-width:220px; }
+
+    /* ── RESPONSIVE BENTO ── */
+    @media (max-width: 1100px) {
+      .db-col-3 { grid-column: span 6; }
+      .db-col-8 { grid-column: span 12; }
+      .db-col-4 { grid-column: span 6; }
+    }
+    @media (max-width: 640px) {
+      /* 2-col stat grid on phones: Income | Spent / Budget | Savings */
+      .bento-db { grid-template-columns: 1fr 1fr; gap: .6rem; }
+      .db-col-3 { grid-column: span 1; }
+      .db-col-4, .db-col-6, .db-col-8, .db-col-12 { grid-column: span 2; }
+      .bento-stat { padding: 1rem .85rem .85rem; }
+      .bento-stat .stat-value { font-size: 1.35rem; }
+      /* Header: stack on tiny screens */
+      .db-header { padding-top: 1rem; gap: .75rem; }
+      .health-info { display: none; } /* hide text next to ring on small screens */
+      /* Focus mode banner padding */
+      .focus-banner { padding: 2rem 1.5rem; }
+    }
+    </style>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,7 +237,10 @@
 
 <nav class="navbar">
     <div class="container nav-content">
-        <span class="navbar-brand">💸 Spendly</span>
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <span class="navbar-brand">💸 Spendly</span>
+            <a href="/logout" class="mobile-logout" style="color: var(--danger); font-size: 1.25rem; margin-right: 0.5rem;" title="Log Out"><i class="fas fa-sign-out-alt"></i></a>
+        </div>
         <div class="navbar-links">
             <a href="/dashboard" class="nav-pill active">DASHBOARD</a>
             <a href="/calendar" class="nav-pill">CALENDAR</a>
@@ -72,148 +291,266 @@
 <span id="page-alert" data-msg="{{ alert }}" style="display:none;"></span>
 {% endif %}
 
-<div class="page-wrapper container fade-in" style="padding-top: 2rem;">
+<!-- ── FOCUS MODE OVERLAY ── -->
+{% set pct_val = (total_spent / finance['needs'] * 100) if finance['needs'] > 0 else 0 %}
+<div class="focus-only" id="focus-overlay" role="dialog" aria-modal="true" aria-label="Focus Mode: Weekly Budget">
+  <div class="focus-banner">
+    <div class="focus-week-label">This Week — Remaining Budget</div>
+    <div class="focus-amount {% if remaining_needs < 0 %}over{% elif pct_val >= 80 %}warn{% else %}good{% endif %}" id="focus-amount-display">
+      ₹{{ "%.0f"|format(remaining_needs) }}
+    </div>
+    <div class="focus-sub">
+      {% if remaining_needs >= 0 %}
+        You're on track. {{ "%.0f"|format(100 - pct_val) }}% of needs budget remaining.
+      {% else %}
+        Over budget by ₹{{ "%.0f"|format(remaining_needs|abs) }}. Review your spending.
+      {% endif %}
+    </div>
+    <button class="focus-exit-btn" id="focus-exit-btn" onclick="exitFocusMode()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Exit Focus Mode
+    </button>
+  </div>
+</div>
 
-    <div class="stat-grid">
-        <div class="stat-card">
-            <div class="stat-label">Monthly Income</div>
-            <div class="stat-value accent">₹{{ "%.0f"|format(finance['salary'] or 0) }}</div>
+<div class="page-wrapper container fade-in" style="padding-top: 0;">
+
+  <!-- ── DASHBOARD HEADER ── -->
+  <div class="db-header hideable">
+    <div>
+      <div class="db-greeting">Good {{ 'evening' if now_hour >= 17 else ('afternoon' if now_hour >= 12 else 'morning') }}, {{ session.get('name', 'User').split()[0] }} 👋</div>
+      <div class="db-date" id="db-live-date"></div>
+    </div>
+    <div class="db-header-right">
+      <!-- Financial Health Mini Ring -->
+      <div class="health-mini" title="Financial Health Score">
+        <div class="health-ring-wrap" aria-label="Financial health 83/100">
+          <svg class="health-ring-svg" viewBox="0 0 56 56">
+            <circle class="health-ring-bg" cx="28" cy="28" r="22"/>
+            <circle class="health-ring-fill" cx="28" cy="28" r="22"
+              stroke="url(#hGrad)"
+              stroke-dasharray="138.2"
+              stroke-dashoffset="138.2"
+              id="health-mini-ring"/>
+            <defs>
+              <linearGradient id="hGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#34d399"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="health-ring-label" id="health-mini-score">0</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Total Spent</div>
-            <div class="stat-value">₹{{ "%.2f"|format(total_spent) }}</div>
+        <div class="health-info">
+          <div class="health-title">Health Score</div>
+          <div class="health-score-text">Excellent</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Budget Left</div>
-            <div class="stat-value" style="{% if remaining_needs < 0 %}color: var(--danger){% else %}color: var(--success){% endif %}">
-                ₹{{ "%.2f"|format(remaining_needs) }}
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Savings Balance</div>
-            <div class="stat-value">₹{{ "%.2f"|format(remaining_savings) }}</div>
-        </div>
+      </div>
+      <!-- Focus Mode Toggle -->
+      <button class="focus-toggle-btn" id="focus-toggle-btn" onclick="enterFocusMode()" title="Enter Focus Mode — show only weekly budget">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Focus Mode
+      </button>
+    </div>
+  </div>
+
+  <!-- ── BENTO STAT TILES ── -->
+  {% set pct = pct_val %}
+  <div class="bento-db hideable">
+    <!-- Monthly Income -->
+    <div class="bento-stat db-col-3">
+      <div class="stat-label">Monthly Income</div>
+      <div class="stat-value" style="color: var(--primary);">₹{{ "%.0f"|format(finance['salary'] or 0) }}</div>
+      <div class="stat-delta delta-up">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        Active
+      </div>
+    </div>
+    <!-- Total Spent -->
+    <div class="bento-stat db-col-3">
+      <div class="stat-label">Total Spent</div>
+      <div class="stat-value">₹{{ "%.0f"|format(total_spent) }}</div>
+      <div class="stat-delta {% if pct >= 80 %}delta-warn{% else %}delta-up{% endif %}">
+        {{ "%.0f"|format(pct) }}% of needs
+      </div>
+    </div>
+    <!-- Budget Left -->
+    <div class="bento-stat db-col-3">
+      <div class="stat-label">Budget Left</div>
+      <div class="stat-value {% if remaining_needs < 0 %}delta-down{% else %}delta-up{% endif %}" style="color: {% if remaining_needs < 0 %}var(--danger){% else %}var(--success){% endif %}">
+        ₹{{ "%.0f"|format(remaining_needs|abs) }}
+      </div>
+      <div class="stat-delta {% if remaining_needs < 0 %}delta-down{% else %}delta-up{% endif %}">
+        {% if remaining_needs < 0 %}Over budget{% else %}Remaining{% endif %}
+      </div>
+    </div>
+    <!-- Savings -->
+    <div class="bento-stat db-col-3">
+      <div class="stat-label">Savings Balance</div>
+      <div class="stat-value">₹{{ "%.0f"|format(remaining_savings) }}</div>
+      <div class="stat-delta delta-up">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        Growing
+      </div>
     </div>
 
-    <div class="glass-card mb-2">
-        <div class="progress-header">
-            <div>
-                <h3 style="font-size: 1.1rem; margin-bottom: 0.2rem;">Budget Usage</h3>
-                <p style="font-size: 0.8rem; color: var(--text-tertiary);">Needs Cap: ₹{{ "%.0f"|format(finance['needs']) }}</p>
-            </div>
-            {% set pct = (total_spent / finance['needs'] * 100) if finance['needs'] > 0 else 0 %}
-            <div style="font-size: 1.5rem; font-weight: 800; color: {% if pct >= 100 %}var(--danger){% elif pct >= 80 %}var(--warning){% else %}var(--success){% endif %}">
-                {{ "%.0f"|format(pct) }}%
-            </div>
+    <!-- Budget Usage Card (spans 8) -->
+    <div class="budget-card db-col-8 hideable">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap: wrap; gap:.5rem;">
+        <div>
+          <div class="stat-label" style="font-size:.68rem; margin-bottom:.3rem;">Needs Budget Usage</div>
+          <h3 style="font-size:1rem; font-weight:700; color:#fff; margin:0;">₹{{ "%.0f"|format(total_spent) }} / ₹{{ "%.0f"|format(finance['needs']) }}</h3>
         </div>
-        <div class="progress-track">
-            <div class="progress-fill" style="width: {{ [pct, 100]|min }}%; background: {% if pct >= 100 %}var(--danger){% elif pct >= 80 %}var(--warning){% else %}var(--primary){% endif %};"></div>
+        <div class="budget-pct-badge" style="color: {% if pct >= 100 %}var(--danger){% elif pct >= 80 %}var(--warning){% else %}var(--success){% endif %}">
+          {{ "%.0f"|format(pct) }}%
         </div>
+      </div>
+      <div class="budget-progress-track">
+        <div class="budget-progress-fill"
+          style="width: {{ [pct, 100]|min }}%; color: {% if pct >= 100 %}var(--danger){% elif pct >= 80 %}var(--warning){% else %}var(--success){% endif %}; background: {% if pct >= 100 %}var(--danger){% elif pct >= 80 %}var(--warning){% else %}linear-gradient(90deg, var(--accent), #34d399){% endif %};">
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:.7rem; color:rgba(255,255,255,.3); font-weight:600;">
+        <span>₹0</span>
+        <span>Cap: ₹{{ "%.0f"|format(finance['needs']) }}</span>
+      </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-        <!-- ADD FORM -->
-        <div class="glass-card">
-            <h3 class="mb-1"><i class="fas fa-plus-circle" style="color: var(--primary);"></i> Add Transaction</h3>
-            <form action="/add" method="POST">
-                <div class="form-group">
-                    <label>Amount (₹)</label>
-                    <input type="number" step="0.01" name="amount" placeholder="0.00" required autofocus>
-                </div>
-                <div class="form-group">
-                    <label>Category</label>
-                    <div class="category-grid" id="category-grid"></div>
-                    <input type="hidden" name="category" id="selected-category" value="Food">
-                </div>
-                <div class="form-group">
-                    <label>Note</label>
-                    <input type="text" name="note" placeholder="What was this for?">
-                </div>
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" name="expense_date" id="expense-date">
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">LOG EXPENSE</button>
+    <!-- Top Expense Bento tile -->
+    <div class="bento-stat db-col-4 hideable" style="justify-content:flex-start; gap:.75rem;">
+      <div class="stat-label">Top Category</div>
+      {% if top_category %}
+      <div style="display:flex; align-items:center; gap:.75rem;">
+        <div style="font-size:1.75rem; line-height:1;">{{ cat_emoji(top_category['category']) }}</div>
+        <div>
+          <div style="font-size:.82rem; font-weight:700; color:#fff;">{{ top_category['category'] }}</div>
+          <div style="font-size:1.2rem; font-weight:800; color:var(--danger);">₹{{ "%.0f"|format(top_category['total']) }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div style="font-size:.82rem; color:rgba(255,255,255,.3);">No data yet</div>
+      {% endif %}
+      <div class="stat-delta delta-down" style="font-size:.65rem;">Highest spend category</div>
+    </div>
+  </div>
+
+  <!-- ── MAIN CONTENT: ADD + ACTIVITY ── -->
+  <div class="hideable" id="main-grid" style="margin-bottom:1.5rem;">
+
+    <!-- ADD TRANSACTION BENTO CARD -->
+    <div class="add-card">
+      <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:1.25rem;">
+        <div style="width:32px; height:32px; border-radius:9px; background:rgba(99,102,241,.15); border:1px solid rgba(99,102,241,.25); display:flex; align-items:center; justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <h3 style="font-size:.95rem; font-weight:800; color:#fff; margin:0;">Add Transaction</h3>
+      </div>
+      <form action="/add" method="POST" id="add-expense-form">
+        <div class="form-group">
+          <label for="amount-input">Amount (₹)</label>
+          <input type="number" step="0.01" name="amount" id="amount-input" placeholder="0.00" required autofocus>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <div class="category-grid" id="category-grid"></div>
+          <input type="hidden" name="category" id="selected-category" value="Food">
+        </div>
+        <div class="form-group">
+          <label for="note-input">Note</label>
+          <input type="text" name="note" id="note-input" placeholder="What was this for?">
+        </div>
+        <div class="form-group">
+          <label for="expense-date">Date</label>
+          <input type="date" name="expense_date" id="expense-date">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="log-expense-btn" style="background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 8px 24px rgba(16,185,129,.3);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          LOG EXPENSE
+        </button>
+      </form>
+
+      <!-- Quick Top-up inside same card -->
+      <div style="margin-top:1.25rem; padding-top:1.25rem; border-top:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.3); margin-bottom:.85rem;">Quick Top-up</div>
+        <div style="display:flex; gap:.6rem; margin-bottom:.6rem; flex-wrap:wrap;">
+          <form action="/add_needs" method="POST" style="flex:1; min-width:100px;">
+            <input type="hidden" name="needs" value="500">
+            <button class="btn btn-ghost btn-full" style="font-size:.72rem; padding:.6rem .75rem;" id="topup-budget-500">+ ₹500 Budget</button>
+          </form>
+          <form action="/add_savings" method="POST" style="flex:1; min-width:100px;">
+            <input type="hidden" name="savings" value="1000">
+            <button class="btn btn-ghost btn-full" style="font-size:.72rem; padding:.6rem .75rem;" id="topup-savings-1k">+ ₹1k Savings</button>
+          </form>
+        </div>
+        <div style="position:relative; display:flex; align-items:center;">
+          <input type="number" id="custom-topup-val" step="0.01" placeholder="Custom amount..."
+            style="width:100%; padding:.7rem; padding-right:160px; font-size:.8rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); background:rgba(255,255,255,.03); color:white;">
+          <div style="position:absolute; right:.3rem; display:flex; gap:.3rem;">
+            <form action="/add_needs" method="POST" style="margin:0;" onsubmit="this.needs.value=document.getElementById('custom-topup-val').value;">
+              <input type="hidden" name="needs" value="">
+              <button class="btn btn-primary" style="padding:.4rem .65rem; font-size:.68rem; border-radius:6px;"
+                onclick="if(!document.getElementById('custom-topup-val').value){document.getElementById('custom-topup-val').focus();return false;}">Budget</button>
             </form>
+            <form action="/add_savings" method="POST" style="margin:0;" onsubmit="this.savings.value=document.getElementById('custom-topup-val').value;">
+              <input type="hidden" name="savings" value="">
+              <button class="btn" style="padding:.4rem .65rem; font-size:.68rem; background:rgba(16,185,129,.15); color:var(--accent); border:1px solid rgba(16,185,129,.3); border-radius:6px; cursor:pointer;"
+                onclick="if(!document.getElementById('custom-topup-val').value){document.getElementById('custom-topup-val').focus();return false;}">Savings</button>
+            </form>
+          </div>
         </div>
-
-        <!-- QUICK STATS & ACTIONS -->
-        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-            <div class="glass-card">
-                <h3 class="mb-1"><i class="fas fa-star" style="color: var(--warning);"></i> Top Expense</h3>
-                {% if top_category %}
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <span class="badge badge-primary">{{ cat_emoji(top_category['category']) }} {{ top_category['category'] }}</span>
-                    <span style="font-weight: 800; font-size: 1.4rem;">₹{{ "%.0f"|format(top_category['total']) }}</span>
-                </div>
-                {% else %}
-                <p style="color: var(--text-tertiary); font-size: 0.85rem;">No data yet.</p>
-                {% endif %}
-            </div>
-            <div class="glass-card">
-                <h3 class="mb-1"><i class="fas fa-wallet" style="color: var(--success);"></i> Quick Top-up</h3>
-                <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
-                    <form action="/add_needs" method="POST" style="flex: 1;">
-                        <input type="hidden" name="needs" value="500">
-                        <button class="btn btn-ghost btn-full" style="font-size: 0.75rem;">+500 Budget</button>
-                    </form>
-                    <form action="/add_savings" method="POST" style="flex: 1;">
-                        <input type="hidden" name="savings" value="1000">
-                        <button class="btn btn-ghost btn-full" style="font-size: 0.75rem;">+1k Savings</button>
-                    </form>
-                </div>
-                <div style="position: relative; display: flex; align-items: center; width: 100%;">
-                    <input type="number" id="custom-topup-val" step="0.01" placeholder="Custom amount..." style="width: 100%; padding: 0.75rem; padding-right: 170px; font-size: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); color: white;">
-                    <div style="position: absolute; right: 0.35rem; display: flex; gap: 0.35rem;">
-                        <form action="/add_needs" method="POST" style="margin: 0;" onsubmit="this.needs.value = document.getElementById('custom-topup-val').value;">
-                            <input type="hidden" name="needs" value="">
-                            <button class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.7rem; border-radius: 6px; height: 100%;" onclick="if(!document.getElementById('custom-topup-val').value) { document.getElementById('custom-topup-val').focus(); return false; }">+ Budget</button>
-                        </form>
-                        <form action="/add_savings" method="POST" style="margin: 0;" onsubmit="this.savings.value = document.getElementById('custom-topup-val').value;">
-                            <input type="hidden" name="savings" value="">
-                            <button class="btn" style="padding: 0.4rem 0.75rem; font-size: 0.7rem; background: rgba(16,185,129,0.15); color: var(--accent); border: 1px solid rgba(16,185,129,0.3); border-radius: 6px; height: 100%; cursor: pointer;" onclick="if(!document.getElementById('custom-topup-val').value) { document.getElementById('custom-topup-val').focus(); return false; }">+ Savings</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
 
-    <!-- RECENT ACTIVITY -->
-    <div class="glass-card mb-2">
-        <h3 class="mb-1"><i class="fas fa-receipt" style="color: var(--primary);"></i> Recent Activity</h3>
-        <table style="width: 100%;">
-            <thead>
-                <tr>
-                    <th>Amount</th>
-                    <th>Category</th>
-                    <th>Note</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for exp in expenses %}
-                <tr>
-                    <td style="font-weight: 800;">₹{{ "%.2f"|format(exp['amount']) }}</td>
-                    <td><span class="badge badge-primary">{{ cat_emoji(exp['category']) }} {{ exp['category'] }}</span></td>
-                    <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ exp['note'] if exp['note'] else '—' }}</td>
-                    <td style="color: var(--text-tertiary); font-size: 0.8rem;">{{ exp['date'] }}</td>
-                    <td>
-                        <div style="display: flex; gap: 0.4rem;">
-                            <a href="/edit/{{ exp['id'] }}" class="btn btn-ghost" style="padding: 0.4rem 0.5rem; font-size: 0.7rem;"><i class="fas fa-edit"></i></a>
-                            <a href="/delete/{{ exp['id'] }}" class="btn btn-ghost" style="padding: 0.4rem 0.5rem; font-size: 0.7rem; color: var(--danger);"><i class="fas fa-trash"></i></a>
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-tertiary);">No transactions found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- RECENT ACTIVITY BENTO CARD -->
+    <div class="add-card" style="display:flex; flex-direction:column; max-height:600px; overflow:hidden;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:.5rem;">
+        <div style="display:flex; align-items:center; gap:.6rem;">
+          <div style="width:32px; height:32px; border-radius:9px; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.22); display:flex; align-items:center; justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <h3 style="font-size:.95rem; font-weight:800; color:#fff; margin:0;">Recent Activity</h3>
+        </div>
+        <a href="/history" style="font-size:.72rem; font-weight:700; color:rgba(255,255,255,.35); letter-spacing:.05em; transition:color .2s; text-transform:uppercase;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.35)'">View All →</a>
+      </div>
+      <div class="activity-list" style="overflow-y:auto; flex:1; padding-right:.25rem;">
+        {% for exp in expenses %}
+        <div class="activity-item">
+          <div class="activity-icon">{{ cat_emoji(exp['category']) }}</div>
+          <div class="activity-info">
+            <div class="activity-cat">{{ exp['category'] }}</div>
+            <div class="activity-note">{{ exp['note'] if exp['note'] else 'No note' }}</div>
+          </div>
+          <div class="activity-right" style="margin-right:.5rem;">
+            <div class="activity-amt">−₹{{ "%.2f"|format(exp['amount']) }}</div>
+            <div class="activity-date">{{ exp['date'] }}</div>
+          </div>
+          <div class="activity-actions">
+            <a href="/edit/{{ exp['id'] }}" class="act-btn" title="Edit" aria-label="Edit transaction">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </a>
+            <a href="/delete/{{ exp['id'] }}" class="act-btn danger" title="Delete" aria-label="Delete transaction">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="empty-title">No transactions yet</div>
+          <div class="empty-sub">Log your first expense using the form to get started.</div>
+        </div>
+        {% endfor %}
+      </div>
     </div>
+  </div>
+
+  <!-- Responsive: mobile stacked grid -->
+  <style>
+    @media (max-width: 768px) {
+      #main-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
 
 </div>
 
@@ -236,6 +573,7 @@ const CATEGORIES = [
     { name: 'Pets',          emoji: '🐾' },
     { name: 'Gifts',         emoji: '🎁' },
     { name: 'Investment',    emoji: '📊' },
+    { name: 'Games',         emoji: '🎮' },
     { name: 'Others',        emoji: '📦' },
 ];
 
@@ -247,7 +585,7 @@ function renderCategories() {
     CATEGORIES.forEach(cat => {
         const chip = document.createElement('div');
         chip.className = 'cat-chip' + (cat.name === selectedCat ? ' selected' : '');
-        chip.innerHTML = `<span>${cat.emoji}</span><span style="font-size:10px">${cat.name}</span>`;
+        chip.innerHTML = `<span>${cat.emoji}</span><span>${cat.name}</span>`;
         chip.onclick = () => {
             selectedCat = cat.name;
             document.getElementById('selected-category').value = cat.name;
@@ -261,7 +599,33 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('expense-date').valueAsDate = new Date();
     renderCategories();
 
-    // Toast system
+    // ── Live date display ──
+    const dateEl = document.getElementById('db-live-date');
+    if (dateEl) {
+      const now = new Date();
+      dateEl.textContent = now.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    }
+
+    // ── Health Ring animation ──
+    setTimeout(() => {
+      const ring = document.getElementById('health-mini-ring');
+      const scoreEl = document.getElementById('health-mini-score');
+      if (ring) {
+        ring.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)';
+        // 83/100 health score => dasharray=138.2 => offset = 138.2*(1-0.83) = 23.5
+        ring.style.strokeDashoffset = '23.5';
+      }
+      if (scoreEl) {
+        let s = 0;
+        const iv = setInterval(() => {
+          s = Math.min(s + 3, 83);
+          scoreEl.textContent = s;
+          if (s >= 83) clearInterval(iv);
+        }, 20);
+      }
+    }, 400);
+
+    // ── Toast system ──
     window.showToast = function(msg, type = 'info') {
         const ICONS = {
             success: 'fa-circle-check',
@@ -289,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 4500);
     };
 
-    // Show server alert as toast
+    // ── Show server alert as toast ──
     const alertEl = document.getElementById('page-alert');
     if (alertEl) {
         const msg = alertEl.dataset.msg;
@@ -301,7 +665,34 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (msg.startsWith('🗑️')) type = 'info';
         showToast(msg, type);
     }
+
+    // ── Keyboard shortcut: F = Focus Mode ──
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        if (document.body.classList.contains('focus-mode')) exitFocusMode();
+        else enterFocusMode();
+      }
+      if (e.key === 'Escape') exitFocusMode();
+    });
 });
+
+// ── Focus Mode functions ──
+function enterFocusMode() {
+  document.body.classList.add('focus-mode');
+  document.getElementById('focus-toggle-btn') && (document.getElementById('focus-toggle-btn').textContent = '← Exit Focus');
+  // Trap focus in overlay
+  const exitBtn = document.getElementById('focus-exit-btn');
+  if (exitBtn) setTimeout(() => exitBtn.focus(), 100);
+}
+
+function exitFocusMode() {
+  document.body.classList.remove('focus-mode');
+  const btn = document.getElementById('focus-toggle-btn');
+  if (btn) btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Focus Mode`;
+}
+
+
 </script>
 
 <script src="/static/pwa.js"></script>

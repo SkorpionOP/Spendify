@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fixed RAG Visualizer</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; color: #1c1e21; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex-grow: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        
+        /* The Visualization Area */
+        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        #canvas { width: 100%; height: 300px; border: 2px solid #eee; position: relative; background: #fdfdfd; border-radius: 10px; }
+        
+        .vector-line { 
+            position: absolute; bottom: 20px; left: 20px; 
+            height: 3px; transform-origin: left center;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .math-box { background: #282c34; color: #abb2bf; padding: 20px; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; }
+        .highlight { color: #61afef; font-weight: bold; }
+        .success { color: #98c379; font-weight: bold; }
+        
+        .label { position: absolute; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>RAG Similarity Engine</h2>
+    <p>Type keywords like <b>"cat"</b>, <b>"paris"</b>, or <b>"water"</b> to see the vector shift.</p>
+    
+    <div class="controls">
+        <input type="text" id="userInput" placeholder="Type your query here..." value="tell me about cats">
+        <button onclick="processRAG()">Match & Score</button>
+    </div>
+
+    <div class="viz-grid">
+        <div>
+            <h4>1. Vector Angle Visualizer</h4>
+            <div id="canvas">
+                <div style="position:absolute; bottom:15px; left:15px; width:10px; height:10px; background:#333; border-radius:50%;"></div>
+            </div>
+        </div>
+        <div>
+            <h4>2. Live Scoring Math</h4>
+            <div id="output" class="math-box">Click the button to calculate...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Hardcoded Database Chunks
+    const db = [
+        { name: "Biology Doc", text: "Cats are crepuscular hunters.", vec: [0.9, 0.1], color: "#ff4757" },
+        { name: "Geography Doc", text: "Paris is a city in France.", vec: [0.1, 0.9], color: "#2ed573" },
+        { name: "Physics Doc", text: "Water molecules bond tightly.", vec: [0.5, 0.5], color: "#1e90ff" }
+    ];
+
+    function processRAG() {
+        const input = document.getElementById('userInput').value.toLowerCase();
+        const canvas = document.getElementById('canvas');
+        const output = document.getElementById('output');
+        
+        // 1. Simulating Embedding (Simplified)
+        let qVec = [0.4, 0.4]; // Starting position
+        if (input.includes("cat")) qVec = [0.95, 0.05];
+        if (input.includes("paris")) qVec = [0.05, 0.95];
+        if (input.includes("water")) qVec = [0.55, 0.45];
+
+        // 2. Clear Canvas (keep the dot)
+        canvas.innerHTML = '<div style="position:absolute; bottom:15px; left:15px; width:10px; height:10px; background:#333; border-radius:50%;"></div>';
+
+        let bestMatch = null;
+        let maxScore = -1;
+
+        // 3. Calculate Similarity for each chunk
+        db.forEach(chunk => {
+            // Cosine Similarity Calculation
+            const dot = (qVec[0] * chunk.vec[0]) + (qVec[1] * chunk.vec[1]);
+            const magQ = Math.sqrt(qVec[0]**2 + qVec[1]**2);
+            const magC = Math.sqrt(chunk.vec[0]**2 + chunk.vec[1]**2);
+            const score = dot / (magQ * magC);
+
+            if (score > maxScore) {
+                maxScore = score;
+                bestMatch = { ...chunk, score, dot, magQ, magC };
+            }
+
+            // Draw Database Vectors
+            drawVector(chunk.vec, chunk.color, chunk.name, 0.5);
+        });
+
+        // 4. Draw Query Vector (The Red one)
+        drawVector(qVec, "#000", "YOUR QUERY", 1);
+
+        // 5. Update Math Output
+        output.innerHTML = `
+<span class="highlight">// VECTORS</span>
+Query:  [${qVec[0]}, ${qVec[1]}]
+Target: [${bestMatch.vec[0]}, ${bestMatch.vec[1]}]
+
+<span class="highlight">// STEP 1: DOT PRODUCT</span>
+(${qVec[0]} * ${bestMatch.vec[0]}) + (${qVec[1]} * ${bestMatch.vec[1]})
+Result: ${bestMatch.dot.toFixed(4)}
+
+<span class="highlight">// STEP 2: NORMALIZATION</span>
+Divide by lengths: ${bestMatch.magQ.toFixed(2)} * ${bestMatch.magC.toFixed(2)}
+
+<span class="highlight">// FINAL SIMILARITY SCORE</span>
+<span class="success">SCORE: ${(bestMatch.score * 100).toFixed(1)}% Match</span>
+<br>
+<b>Top Context:</b> "${bestMatch.text}"
+        `;
+    }
+
+    function drawVector(vec, color, label, opacity) {
+        const canvas = document.getElementById('canvas');
+        const line = document.createElement('div');
+        line.className = 'vector-line';
+        
+        // Convert [x,y] to angle and length for CSS
+        const angle = Math.atan2(vec[1], vec[0]) * (180 / Math.PI);
+        const length = 200; // Fixed length for visualization of angle
+        
+        line.style.width = length + 'px';
+        line.style.background = color;
+        line.style.opacity = opacity;
+        line.style.transform = `rotate(-${angle}deg)`;
+        
+        // Add Label at the tip
+        const labelEl = document.createElement('div');
+        labelEl.className = 'label';
+        labelEl.innerText = label;
+        labelEl.style.color = color;
+        labelEl.style.left = (Math.cos(angle * Math.PI/180) * length + 25) + "px";
+        labelEl.style.bottom = (Math.sin(angle * Math.PI/180) * length + 25) + "px";
+
+        canvas.appendChild(line);
+        canvas.appendChild(labelEl);
+    }
+
+    // Run once on load
+    processRAG();
+</script>
+
+</body>
+</html>

@@ -20,7 +20,7 @@ CATEGORY_EMOJIS = {
     'Entertainment': '🎬', 'Health': '💊', 'Education': '📚', 'Groceries': '🛒',
     'Fitness': '🏋️', 'Travel': '✈️', 'Rent': '🏠', 'Subscriptions': '📱',
     'Dining Out': '🍽️', 'Beauty': '💄', 'Pets': '🐾', 'Gifts': '🎁',
-    'Investment': '📊', 'Others': '📦',
+    'Investment': '📊', 'Games': '🎮', 'Others': '📦',
 }
 
 def cat_emoji(category):
@@ -404,7 +404,8 @@ def dashboard():
         remaining_savings=remaining_savings,
         savings_used=savings_used,
         top_category=top_cat,
-        alert=alert
+        alert=alert,
+        now_hour=today.hour
     )
 
 # -----------------------------
@@ -642,22 +643,34 @@ def calendar_view():
         return redirect('/login')
 
     today = datetime.today()
-    year = today.year
-    month = today.month
+    try:
+        year = int(request.args.get('y', today.year))
+        month = int(request.args.get('m', today.month))
+    except ValueError:
+        year = today.year
+        month = today.month
+
+    # Calculate previous and next months
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
 
     num_days = calendar.monthrange(year, month)[1]
     days = list(range(1, num_days + 1))
     offset = calendar.monthrange(year, month)[0]  # 0=Mon ... 6=Sun → convert to Sun-first
     offset = (offset + 1) % 7  # Sunday = 0
 
-    month_name = today.strftime("%B")
+    month_name = datetime(year, month, 1).strftime("%B")
 
     return render_template(
         'calendar.html',
         days=days, year=year, month=month,
         month_name=month_name,
         offset=offset,
-        today_day=today.day
+        today_day=today.day if year == today.year and month == today.month else -1,
+        prev_month=prev_month, prev_year=prev_year,
+        next_month=next_month, next_year=next_year
     )
 
 # -----------------------------
@@ -755,16 +768,27 @@ def history():
     if 'user_id' not in session:
         return redirect('/login')
 
-    conn = get_db_connection()
-    months = conn.execute(
-        """SELECT substr(date, 1, 7) as month, SUM(amount) as total
-           FROM expenses WHERE user_id=?
-           GROUP BY month ORDER BY month DESC""",
-        (session['user_id'],)
-    ).fetchall()
-    conn.close()
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
 
-    return render_template('history.html', months=months)
+    conn = get_db_connection()
+    if start_date and end_date:
+        records = conn.execute(
+            "SELECT * FROM expenses WHERE user_id=? AND date >= ? AND date <= ? ORDER BY date DESC, id DESC",
+            (session['user_id'], start_date, end_date)
+        ).fetchall()
+        total = sum(r['amount'] for r in records)
+        conn.close()
+        return render_template('history.html', records=records, total=total, start_date=start_date, end_date=end_date)
+    else:
+        months = conn.execute(
+            """SELECT substr(date, 1, 7) as month, SUM(amount) as total
+               FROM expenses WHERE user_id=?
+               GROUP BY month ORDER BY month DESC""",
+            (session['user_id'],)
+        ).fetchall()
+        conn.close()
+        return render_template('history.html', months=months)
 
 # -----------------------------
 # ANALYSIS BY MONTH

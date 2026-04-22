@@ -92,8 +92,16 @@
 
         <div style="margin: 2rem 0; border-top: 1px solid var(--border-light);"></div>
 
+        <h3 class="mb-1 text-center" style="font-size: 1.1rem;">📱 App Settings</h3>
+        <p class="mb-1 text-center" style="color: var(--text-tertiary); font-size: 0.85rem;">Install Spendly for a native app experience.</p>
+        <button id="pwa-settings-install-btn" class="btn btn-ghost btn-full mb-1" style="display: none;">
+            <i class="fas fa-download"></i> INSTALL SPENDLY
+        </button>
+
+        <div style="margin: 2rem 0; border-top: 1px solid var(--border-light);"></div>
+
         <h3 class="mb-1 text-center" style="font-size: 1.1rem;">👤 Account</h3>
-        <a href="/logout" class="btn btn-ghost btn-full" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+        <a href="/logout" class="btn btn-full" style="background-color: var(--danger, #ef4444); color: white; border: none; font-weight: 700; margin-top: 1rem;">
             <i class="fas fa-arrow-right-from-bracket"></i> LOG OUT
         </a>
     </div>
@@ -115,6 +123,18 @@ function calc() {
     document.getElementById('needs-amount').innerText = '₹' + needsAmt;
     document.getElementById('savings-amount').innerText = '₹' + savingsAmt;
 }
+
+// Handle Settings Install Button
+window.addEventListener('beforeinstallprompt', (e) => {
+    const btn = document.getElementById('pwa-settings-install-btn');
+    if (btn) {
+        btn.style.display = 'block';
+        btn.onclick = () => {
+            if (typeof triggerInstall === 'function') triggerInstall();
+        };
+    }
+});
+
 document.addEventListener('DOMContentLoaded', calc);
 </script>
 

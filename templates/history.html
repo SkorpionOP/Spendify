@@ -60,33 +60,71 @@
 <div class="container page-wrapper fade-in" style="padding-top: 2rem;">
     <div style="text-align: center; margin-bottom: 2.5rem;">
         <h1 style="font-size: 2rem;" class="accent">⏳ Archive</h1>
-        <p style="color: var(--text-tertiary); font-size: 0.9rem;">Your financial records across the months</p>
+        <p style="color: var(--text-tertiary); font-size: 0.9rem;">Filter your records by date or view monthly summaries</p>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="glass-card mb-2" style="max-width: 600px; margin: 0 auto 2rem auto;">
+        <form method="GET" action="/history" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 120px;">
+                <label style="font-size: 0.8rem; color: var(--text-tertiary);">Start Date</label>
+                <input type="date" name="start_date" style="padding: 0.5rem; border-radius: 8px; width: 100%; border: 1px solid var(--border-light); background: rgba(255,255,255,0.05); color: #fff; font-family: inherit;" value="{{ start_date if start_date else '' }}" required>
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+                <label style="font-size: 0.8rem; color: var(--text-tertiary);">End Date</label>
+                <input type="date" name="end_date" style="padding: 0.5rem; border-radius: 8px; width: 100%; border: 1px solid var(--border-light); background: rgba(255,255,255,0.05); color: #fff; font-family: inherit;" value="{{ end_date if end_date else '' }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;"><i class="fas fa-filter"></i> Filter</button>
+            {% if start_date %}
+            <a href="/history" class="btn btn-ghost" style="padding: 0.5rem 1rem;"><i class="fas fa-times"></i> Clear</a>
+            {% endif %}
+        </form>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 600px; margin: 0 auto;">
-        {% for m in months %}
-        <a href="/analysis/{{ m['month'] }}" class="glass-card" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <div style="width: 44px; height: 44px; background: rgba(99, 102, 241, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
-                    <i class="fas fa-calendar-check"></i>
-                </div>
+        {% if start_date and end_date %}
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <h3 style="color: var(--text-secondary);">Filtered Results</h3>
+                <h2 class="accent mb-2">Total Spent: ₹{{ "%.2f"|format(total) }}</h2>
+            </div>
+            {% for r in records %}
+            <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem;">
                 <div>
-                    <div style="font-weight: 700; font-size: 1.1rem; color: #fff;">{{ m['month'] }}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-tertiary);">View breakdown</div>
+                    <div style="font-weight: 700; color: #fff; margin-bottom: 0.25rem;">
+                        <span class="badge badge-primary" style="margin-right: 0.5rem;">{{ cat_emoji(r['category']) }} {{ r['category'] }}</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-tertiary);">{{ r['date'] }} | {{ r['note'] if r['note'] else 'No note' }}</div>
                 </div>
+                <div style="font-weight: 800; color: var(--primary); font-size: 1.1rem;">₹{{ "%.2f"|format(r['amount']) }}</div>
             </div>
-            <div style="text-align: right;">
-                <div style="font-weight: 800; color: var(--primary);">₹{{ "%.0f"|format(m['total'] or 0) }}</div>
-                <i class="fas fa-chevron-right" style="font-size: 0.7rem; color: var(--text-tertiary);"></i>
-            </div>
-        </a>
+            {% else %}
+            <div class="text-center" style="color: var(--text-tertiary); padding: 2rem;">No records found in this date range.</div>
+            {% endfor %}
         {% else %}
-        <div class="glass-card text-center" style="padding: 4rem 2rem;">
-            <i class="fas fa-folder-open mb-1" style="font-size: 3rem; color: var(--text-tertiary);"></i>
-            <p style="color: var(--text-tertiary);">No records found in the archive.</p>
-            <a href="/dashboard" class="btn btn-primary mt-2">Start Logging</a>
-        </div>
-        {% endfor %}
+            {% for m in months %}
+            <a href="/analysis/{{ m['month'] }}" class="glass-card" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 44px; height: 44px; background: rgba(99, 102, 241, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 1.1rem; color: #fff;">{{ m['month'] }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-tertiary);">View breakdown</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight: 800; color: var(--primary);">₹{{ "%.0f"|format(m['total'] or 0) }}</div>
+                    <i class="fas fa-chevron-right" style="font-size: 0.7rem; color: var(--text-tertiary);"></i>
+                </div>
+            </a>
+            {% else %}
+            <div class="glass-card text-center" style="padding: 4rem 2rem;">
+                <i class="fas fa-folder-open mb-1" style="font-size: 3rem; color: var(--text-tertiary);"></i>
+                <p style="color: var(--text-tertiary);">No records found in the archive.</p>
+                <a href="/dashboard" class="btn btn-primary mt-2">Start Logging</a>
+            </div>
+            {% endfor %}
+        {% endif %}
     </div>
 </div>
 

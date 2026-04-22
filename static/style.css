@@ -880,3 +880,107 @@ input, select, textarea {
   #spendly-sync-float { bottom: 7rem; right: 1rem; }
   #pwa-install-banner { bottom: 5rem; width: calc(100vw - 2rem); }
 }
+
+/* ───────────────────────────────────────────
+   PWA Banner UI (Highly Visible)
+   ─────────────────────────────────────────── */
+.pwa-bottom-banner {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 2rem);
+  max-width: 500px;
+  background: rgba(15, 15, 25, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.2);
+  z-index: 9999; /* Extremely high z-index to guarantee visibility */
+  animation: slideUpPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes slideUpPop {
+  0% { opacity: 0; bottom: -50px; transform: translateX(-50%) scale(0.9); }
+  100% { opacity: 1; bottom: 2rem; transform: translateX(-50%) scale(1); }
+}
+
+.pwa-bottom-banner.slide-out {
+  animation: slideOutDownPop 0.3s forwards;
+}
+
+@keyframes slideOutDownPop {
+  100% { opacity: 0; bottom: -50px; transform: translateX(-50%) scale(0.9); }
+}
+
+.pwa-bottom-banner button {
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.pwa-btn-install { 
+  background: var(--primary); 
+  color: #fff; 
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+.pwa-btn-dismiss { 
+  background: rgba(255, 255, 255, 0.08); 
+  color: var(--text-secondary);
+}
+.pwa-btn-install:hover { background: #4f46e5; transform: scale(1.05); }
+.pwa-btn-dismiss:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+
+.pwa-floating-btn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--primary);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 9998;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.pwa-floating-btn:hover { background: var(--primary); color: #fff; transform: scale(1.1) rotate(10deg); }
+
+@media (max-width: 768px) {
+  .pwa-bottom-banner {
+    bottom: 6rem; /* Above the mobile nav */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .pwa-bottom-banner .actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .pwa-bottom-banner .actions button {
+    flex: 1;
+  }
+  .pwa-floating-btn {
+    bottom: 6rem;
+    right: 1.5rem;
+  }
+}
+
+@ m e d i a   ( m i n - w i d t h :   7 6 9 p x )   {   . m o b i l e - l o g o u t   {   d i s p l a y :   n o n e   ! i m p o r t a n t ;   }   }  
+ 

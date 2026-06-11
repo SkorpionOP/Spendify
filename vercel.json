@@ -12,43 +12,35 @@
             "use": "@vercel/python"
         }
     ],
-    "rewrites": [
+    "routes": [
         {
-            "source": "/api/(.*)",
-            "destination": "/backend/main.py"
+            "src": "/api/(.*)",
+            "dest": "backend/main.py"
         },
         {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
-    ],
-    "headers": [
-        {
-            "source": "/sw.js",
-            "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "no-cache, no-store, must-revalidate"
-                }
-            ]
+            "src": "/sw.js",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            },
+            "dest": "/sw.js"
         },
         {
-            "source": "/workbox-(.*)\\.js",
-            "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "no-cache, no-store, must-revalidate"
-                }
-            ]
+            "src": "/workbox-(.*)\\.js",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            },
+            "dest": "/workbox-$1.js"
         },
         {
-            "source": "/manifest.(json|webmanifest)",
-            "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "no-cache, no-store, must-revalidate"
-                }
-            ]
+            "src": "/manifest\\.(json|webmanifest)",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            },
+            "dest": "/manifest.$1"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
         }
     ]
 }

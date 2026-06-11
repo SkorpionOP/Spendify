@@ -1,46 +1,34 @@
 {
-    "builds": [
+    "buildCommand": "cd frontend && npm install && npm run build",
+    "outputDirectory": "frontend/dist",
+    "rewrites": [
         {
-            "src": "frontend/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist"
-            }
+            "source": "/api/:path*",
+            "destination": "/api/index"
         },
         {
-            "src": "backend/main.py",
-            "use": "@vercel/python"
+            "source": "/:path*",
+            "destination": "/index.html"
         }
     ],
-    "routes": [
+    "headers": [
         {
-            "src": "/api/(.*)",
-            "dest": "backend/main.py"
+            "source": "/sw.js",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "no-cache, no-store, must-revalidate"
+                }
+            ]
         },
         {
-            "src": "/sw.js",
-            "headers": {
-                "Cache-Control": "no-cache, no-store, must-revalidate"
-            },
-            "dest": "/sw.js"
-        },
-        {
-            "src": "/workbox-(.*)\\.js",
-            "headers": {
-                "Cache-Control": "no-cache, no-store, must-revalidate"
-            },
-            "dest": "/workbox-$1.js"
-        },
-        {
-            "src": "/manifest\\.(json|webmanifest)",
-            "headers": {
-                "Cache-Control": "no-cache, no-store, must-revalidate"
-            },
-            "dest": "/manifest.$1"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/index.html"
+            "source": "/workbox-(.*).js",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "no-cache, no-store, must-revalidate"
+                }
+            ]
         }
     ]
 }

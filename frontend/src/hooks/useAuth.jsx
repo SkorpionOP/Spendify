@@ -32,6 +32,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (!auth) {
+      console.warn("Firebase Auth not initialized. Falling back to backend session cookie only.");
+      checkAuth();
+      return;
+    }
+    
     // Listen for Firebase Auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {

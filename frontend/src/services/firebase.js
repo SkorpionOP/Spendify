@@ -11,8 +11,15 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
+let app = null;
+export let auth = null;
+
+if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined') {
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  auth = getAuth(app);
+} else {
+  console.warn("Firebase config is missing API key. Firebase services will be disabled.");
+}
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();

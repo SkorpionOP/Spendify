@@ -63,11 +63,26 @@ except Exception as e:
     def fallback_firebase():
         return {"status": "error", "error": error_details}
 
+@app.get("/")
+def root():
+    return {"status": "backend alive"}
+
 @app.get("/api/health")
 def health_check():
     if error_details:
         return {"status": "error", "error": error_details}
-    return {"status": "healthy", "service": "Spendly API"}
+    return {"status": "ok"}
+
+@app.get("/api/routes")
+def list_routes():
+    routes = []
+    for route in app.routes:
+        routes.append({
+            "path": route.path,
+            "methods": list(route.methods) if hasattr(route, 'methods') else [],
+            "name": route.name if hasattr(route, 'name') else None
+        })
+    return {"routes": routes}
 
 if __name__ == "__main__":
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

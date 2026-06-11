@@ -1,15 +1,13 @@
 {
+    "version": 2,
     "builds": [
-        {
-            "src": "frontend/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist"
-            }
-        },
         {
             "src": "backend/main.py",
             "use": "@vercel/python"
+        },
+        {
+            "src": "frontend/dist/**",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
@@ -30,26 +28,15 @@
         },
         {
             "src": "/workbox-(.*)\\.js",
-            "dest": "frontend/dist/workbox-$1.js",
-            "headers": {
-                "Cache-Control": "no-cache, no-store, must-revalidate"
-            }
+            "dest": "frontend/dist/workbox-$1.js"
         },
         {
             "src": "/manifest\\.(webmanifest|json)",
             "dest": "frontend/dist/manifest.$1"
         },
         {
-            "src": "/favicon\\.(ico|svg)",
-            "dest": "frontend/dist/favicon.$1"
-        },
-        {
-            "src": "/icon(.*)\\.png",
-            "dest": "frontend/dist/icon$1.png"
-        },
-        {
-            "src": "/icon\\.svg",
-            "dest": "frontend/dist/icon.svg"
+            "src": "/(favicon|icon)\\.(ico|svg|png)",
+            "dest": "frontend/dist/$1.$2"
         },
         {
             "src": "/(.*)",

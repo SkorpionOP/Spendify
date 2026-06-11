@@ -42,7 +42,8 @@ export const LayoutProvider = ({ children }) => {
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
+      // Chrome requires prompt() to be called if preventDefault() is used, 
+      // but omitting preventDefault() allows the native banner/infobar.
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

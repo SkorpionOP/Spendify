@@ -2,7 +2,7 @@ import axios from 'axios';
 import { setCache, getCache, addToOutbox } from './db';
 
 const api = axios.create({
-  baseURL: import.meta.env.PROD ? '/_/backend/api' : '/api',
+  baseURL: '/api',
   withCredentials: true,
 });
 

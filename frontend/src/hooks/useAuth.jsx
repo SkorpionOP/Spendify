@@ -22,7 +22,10 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
       }
     } catch (error) {
-      setUser(null);
+      // Don't log out the user if the request failed due to being offline
+      if (navigator.onLine) {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -42,7 +45,16 @@ export const AuthProvider = ({ children }) => {
           );
         } catch (err) {
           console.error("Failed to sync Firebase session with backend", err);
-          setUser(null);
+          if (navigator.onLine) {
+            setUser(null);
+          } else {
+            // Offline fallback: Use Firebase user data directly
+            setUser({
+              id: firebaseUser.uid,
+              name: firebaseUser.displayName || 'User',
+              profile_pic: firebaseUser.photoURL || null,
+            });
+          }
         } finally {
           setLoading(false);
         }

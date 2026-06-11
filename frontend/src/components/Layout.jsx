@@ -38,8 +38,28 @@ export const LayoutProvider = ({ children }) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [focusData]);
 
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const promptInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
+
   return (
-    <LayoutContext.Provider value={{ focusMode, focusData, enterFocusMode, exitFocusMode }}>
+    <LayoutContext.Provider value={{ focusMode, focusData, enterFocusMode, exitFocusMode, deferredPrompt, promptInstall }}>
       {children}
     </LayoutContext.Provider>
   );

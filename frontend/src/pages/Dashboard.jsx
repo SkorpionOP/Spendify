@@ -70,6 +70,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    const handleSync = () => {
+      fetchDashboardData();
+      showToast('Data synced with cloud', 'success');
+    };
+    window.addEventListener('spendly:synced', handleSync);
+    return () => window.removeEventListener('spendly:synced', handleSync);
   }, [startDate, endDate]);
 
   const getEmoji = (catName) => {
@@ -352,6 +359,74 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Main Grid: Forms and Lists */}
+      <div id="main-grid" style={{ marginBottom: '1.5rem' }}>
+        {/* Log Transaction Form */}
+        <div className="add-card">
+          {renderAddForm()}
+        </div>
+
+        {/* Recent Activity List */}
+        <div className="add-card" style={{ display: 'flex', flexDirection: 'column', maxHeight: '600px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.22)', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                <CalendarIcon size={16} color="#10b981" />
+              </div>
+              <h3 style={{ fontSize: '.95rem', fontWeight: 800, color: '#fff', margin: 0 }}>Recent Activity</h3>
+            </div>
+            <Link to="/history" style={{ fontSize: '.72rem', fontWeight: 700, color: 'rgba(255,255,255,.35)' }}>
+              View All →
+            </Link>
+          </div>
+          
+          <div className="activity-list" style={{ overflowY: 'auto', flex: 1 }}>
+            {data.expenses && data.expenses.length > 0 ? (
+              data.expenses.map((exp) => (
+                <div key={exp.id} className="activity-item">
+                  <div className="activity-icon">{getEmoji(exp.category)}</div>
+                  <div className="activity-info">
+                    <div className="activity-cat">{exp.category}</div>
+                    <div className="activity-note">{exp.note || 'No note'}</div>
+                  </div>
+                  <div className="activity-right" style={{ marginRight: '.5rem' }}>
+                    <div className="activity-amt">−₹{Number(exp.amount).toFixed(2)}</div>
+                    <div className="activity-date">{exp.date}</div>
+                  </div>
+                  <div className="activity-actions">
+                    <button 
+                      className="act-btn" 
+                      onClick={() => {
+                        setAmount(exp.amount);
+                        setCategory(exp.category);
+                        setNote((exp.note || '') + ' (Copy)');
+                        setExpenseDate(new Date().toISOString().split('T')[0]);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      title="Duplicate"
+                    >
+                      <Copy size={13} />
+                    </button>
+                    <button className="act-btn" onClick={() => navigate(`/edit/${exp.id}`)}>
+                      <Edit size={12} />
+                    </button>
+                    <button className="act-btn danger" onClick={() => handleDeleteExpense(exp.id)}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyState 
+                icon={CalendarIcon} 
+                title="No activity yet" 
+                subtitle="Your recent transactions will appear here." 
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Bento Stats Grid */}
       <div className="bento-db hideable">
         <div className="bento-stat db-col-3">
@@ -469,90 +544,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Main Grid: Forms and Lists */}
-      <div id="main-grid" style={{ marginBottom: '1.5rem' }}>
-        {/* Log Transaction Form (Desktop) */}
-        <div className="add-card desktop-add-card">
-          {renderAddForm()}
-        </div>
-
-        {/* Recent Activity List */}
-        <div className="add-card" style={{ display: 'flex', flexDirection: 'column', maxHeight: '600px', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.22)', display: 'flex', alignItems: 'center', justify: 'center' }}>
-                <CalendarIcon size={16} color="#10b981" />
-              </div>
-              <h3 style={{ fontSize: '.95rem', fontWeight: 800, color: '#fff', margin: 0 }}>Recent Activity</h3>
-            </div>
-            <Link to="/history" style={{ fontSize: '.72rem', fontWeight: 700, color: 'rgba(255,255,255,.35)' }}>
-              View All →
-            </Link>
-          </div>
-          
-          <div className="activity-list" style={{ overflowY: 'auto', flex: 1 }}>
-            {data.expenses && data.expenses.length > 0 ? (
-              data.expenses.map((exp) => (
-                <div key={exp.id} className="activity-item">
-                  <div className="activity-icon">{getEmoji(exp.category)}</div>
-                  <div className="activity-info">
-                    <div className="activity-cat">{exp.category}</div>
-                    <div className="activity-note">{exp.note || 'No note'}</div>
-                  </div>
-                  <div className="activity-right" style={{ marginRight: '.5rem' }}>
-                    <div className="activity-amt">−₹{Number(exp.amount).toFixed(2)}</div>
-                    <div className="activity-date">{exp.date}</div>
-                  </div>
-                  <div className="activity-actions">
-                    <button 
-                      className="act-btn" 
-                      onClick={() => {
-                        setAmount(exp.amount);
-                        setCategory(exp.category);
-                        setNote((exp.note || '') + ' (Copy)');
-                        setExpenseDate(new Date().toISOString().split('T')[0]);
-                        setIsMobileAddOpen(true);
-                      }}
-                      title="Duplicate"
-                    >
-                      <Copy size={13} />
-                    </button>
-                    <button className="act-btn" onClick={() => navigate(`/edit/${exp.id}`)}>
-                      <Edit size={12} />
-                    </button>
-                    <button className="act-btn danger" onClick={() => handleDeleteExpense(exp.id)}>
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <EmptyState 
-                icon={CalendarIcon} 
-                title="No activity yet" 
-                subtitle="Your recent transactions will appear here." 
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile FAB */}
-      <button className="fab" onClick={() => setIsMobileAddOpen(true)}>
-        <Plus size={24} />
-      </button>
-
-      {/* Mobile Add Modal */}
-      {isMobileAddOpen && (
-        <div className="modal-overlay" onClick={(e) => {
-          if (e.target.className === 'modal-overlay') setIsMobileAddOpen(false);
-        }}>
-          <div className="modal-content">
-            {renderAddForm()}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -9,11 +9,15 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('[Spendly] SW registered:', reg.scope))
-      .catch(err => console.error('[Spendly] SW registration failed:', err));
-  });
-}
+import { registerSW } from 'virtual:pwa-register'
 
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm('New content available. Reload?')) {
+      updateSW(true)
+    }
+  },
+  onOfflineReady() {
+    console.log('[Spendly] App ready to work offline')
+  },
+})

@@ -1,10 +1,14 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, LineChart, History, Settings, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Calendar, LineChart, History, Settings, LogOut, User, Download, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useLayout } from './Layout';
+import { useSync } from '../hooks/useSync';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
+  const { deferredPrompt, promptInstall } = useLayout();
+  const { isOnline, isSyncing, pendingCount } = useSync();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -20,15 +24,32 @@ export const Navbar = () => {
       <nav className="navbar">
         <div className="container nav-content">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span className="navbar-brand">💸 Spendly</span>
-            <button 
-              className="mobile-logout" 
-              onClick={handleLogout}
-              style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '1.25rem', marginRight: '0.5rem', cursor: 'pointer' }}
-              title="Log Out"
-            >
-              <LogOut size={20} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span className="navbar-brand">💸 Spendly</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '12px', background: isOnline ? (pendingCount > 0 ? 'rgba(234,179,8,0.1)' : 'rgba(16,185,129,0.1)') : 'rgba(239,68,68,0.1)', color: isOnline ? (pendingCount > 0 ? 'var(--warning)' : 'var(--success)') : 'var(--danger)' }}>
+                {!isOnline ? <CloudOff size={14} /> : isSyncing ? <RefreshCw size={14} className="spin" /> : <Cloud size={14} />}
+                {!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : pendingCount > 0 ? `${pendingCount} Pending` : 'Online'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {deferredPrompt && (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={promptInstall}
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                >
+                  <Download size={14} /> Install App
+                </button>
+              )}
+              <button 
+                className="mobile-logout" 
+                onClick={handleLogout}
+                style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '1.25rem', marginRight: '0.5rem', cursor: 'pointer' }}
+                title="Log Out"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
           </div>
           <div className="navbar-links">
             <NavLink to="/dashboard" className={({ isActive }) => `nav-pill ${isActive ? 'active' : ''}`}>

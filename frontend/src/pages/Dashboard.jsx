@@ -3,7 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useLayout } from '../components/Layout';
 import { useToast } from '../hooks/useToast';
-import { Plus, Trash2, Edit, Coins, HeartPulse, ShieldAlert, Sparkles, TrendingUp, Calendar as CalendarIcon, User } from 'lucide-react';
+import { useDateRange } from '../hooks/useDateRange';
+import { EmptyState } from '../components/EmptyState';
+import { Plus, Trash2, Edit, Coins, HeartPulse, ShieldAlert, Sparkles, TrendingUp, Calendar as CalendarIcon, User, Copy } from 'lucide-react';
 
 const CATEGORIES = [
   { name: 'Food', emoji: '🍔' },
@@ -40,14 +42,17 @@ export default function Dashboard() {
   // Topup State
   const [customTopup, setCustomTopup] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMobileAddOpen, setIsMobileAddOpen] = useState(false);
 
   const { enterFocusMode } = useLayout();
   const { showToast } = useToast();
+  const { startDate, endDate } = useDateRange();
   const navigate = useNavigate();
 
   const fetchDashboardData = async () => {
+    setLoading(true);
     try {
-      const response = await api.get('/dashboard');
+      const response = await api.get(`/dashboard?start_date=${startDate}&end_date=${endDate}`);
       if (response.data.needs_setup) {
         navigate('/setup');
         return;
@@ -65,10 +70,49 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [startDate, endDate]);
 
   const getEmoji = (catName) => {
     return CATEGORIES.find(c => c.name === catName)?.emoji || '📦';
+  };
+
+  // Phase 6: Smart Category Suggestions
+  const handleNoteChange = (e) => {
+    const val = e.target.value;
+    setNote(val);
+    
+    // Auto-categorize based on keywords
+    const lowerVal = val.toLowerCase();
+    const keywordMap = {
+      'uber': 'Transport',
+      'ola': 'Transport',
+      'taxi': 'Transport',
+      'flight': 'Travel',
+      'train': 'Travel',
+      'zomato': 'Food',
+      'swiggy': 'Food',
+      'burger': 'Food',
+      'pizza': 'Food',
+      'netflix': 'Subscriptions',
+      'spotify': 'Subscriptions',
+      'prime': 'Subscriptions',
+      'amazon': 'Shopping',
+      'flipkart': 'Shopping',
+      'grocery': 'Groceries',
+      'gym': 'Fitness',
+      'hospital': 'Health',
+      'medicine': 'Health',
+      'rent': 'Rent',
+      'electric': 'Bills',
+      'wifi': 'Bills'
+    };
+    
+    for (const [key, category] of Object.entries(keywordMap)) {
+      if (lowerVal.includes(key)) {
+        setCategory(category);
+        break;
+      }
+    }
   };
 
   const handleAddExpense = async (e) => {
@@ -132,8 +176,135 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) return <div className="text-center" style={{ marginTop: '4rem' }}>Loading dashboard...</div>;
+  if (loading && !data) {
+    return (
+      <div className="fade-in">
+        <div className="db-header hideable" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between' }}>
+          <div>
+            <div className="skeleton" style={{ width: '200px', height: '32px', marginBottom: '8px' }}></div>
+            <div className="skeleton" style={{ width: '150px', height: '16px' }}></div>
+          </div>
+          <div className="skeleton" style={{ width: '120px', height: '44px', borderRadius: '12px' }}></div>
+        </div>
+        <div className="skeleton" style={{ width: '100%', height: '70px', marginBottom: '1.5rem', borderRadius: '18px' }}></div>
+        <div className="bento-db hideable">
+          <div className="bento-stat db-col-3 skeleton" style={{ height: '120px' }}></div>
+          <div className="bento-stat db-col-3 skeleton" style={{ height: '120px' }}></div>
+          <div className="bento-stat db-col-3 skeleton" style={{ height: '120px' }}></div>
+          <div className="bento-stat db-col-3 skeleton" style={{ height: '120px' }}></div>
+          <div className="budget-card db-col-8 skeleton" style={{ height: '160px' }}></div>
+          <div className="bento-stat db-col-4 skeleton" style={{ height: '160px' }}></div>
+        </div>
+      </div>
+    );
+  }
   if (!data) return null;
+
+  const renderAddForm = () => (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '1.25rem' }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: 'rgba(99,102,241,.15)', border: '1px solid rgba(99,102,241,.25)', display: 'flex', alignItems: 'center', justify: 'center' }}>
+          <Plus size={16} color="#6366f1" />
+        </div>
+        <h3 style={{ fontSize: '.95rem', fontWeight: 800, color: '#fff', margin: 0 }}>Add Transaction</h3>
+      </div>
+      
+      <form onSubmit={(e) => { handleAddExpense(e); setIsMobileAddOpen(false); }}>
+        <div className="form-group">
+          <label htmlFor="amount-input">Amount (₹)</label>
+          <input
+            type="number"
+            step="0.01"
+            id="amount-input"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            required
+          />
+        </div>
+        
+        <div className="form-group">
+          <label>Category</label>
+          <div className="category-grid">
+            {CATEGORIES.map((cat) => (
+              <div
+                key={cat.name}
+                className={`cat-chip ${category === cat.name ? 'selected' : ''}`}
+                onClick={() => setCategory(cat.name)}
+              >
+                <span>{cat.emoji}</span>
+                <span>{cat.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="note-input">Note</label>
+          <input
+            type="text"
+            id="note-input"
+            value={note}
+            onChange={handleNoteChange}
+            placeholder="What was this for?"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="expense-date">Date</label>
+          <input
+            type="date"
+            id="expense-date"
+            value={expenseDate}
+            onChange={(e) => setExpenseDate(e.target.value)}
+          />
+        </div>
+        
+        <button type="submit" className="btn btn-primary btn-full" disabled={isSubmitting}>
+          {isSubmitting ? 'LOGGING...' : 'LOG EXPENSE'}
+        </button>
+      </form>
+
+      {/* Quick Top-ups */}
+      <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+        <div style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'rgba(255,255,255,.3)', marginBottom: '.85rem' }}>Quick Top-up</div>
+        <div style={{ display: 'flex', gap: '.6rem', marginBottom: '.6rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost btn-full" style={{ fontSize: '.72rem', padding: '.6rem .75rem', flex: 1 }} onClick={(e) => { handleTopup(e, 'needs', 500); setIsMobileAddOpen(false); }}>
+            + ₹500 Budget
+          </button>
+          <button className="btn btn-ghost btn-full" style={{ fontSize: '.72rem', padding: '.6rem .75rem', flex: 1 }} onClick={(e) => { handleTopup(e, 'savings', 1000); setIsMobileAddOpen(false); }}>
+            + ₹1k Savings
+          </button>
+        </div>
+        
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <input
+            type="number"
+            value={customTopup}
+            onChange={(e) => setCustomTopup(e.target.value)}
+            placeholder="Custom amount..."
+            style={{ width: '100%', padding: '.7rem', paddingRight: '160px', fontSize: '.8rem' }}
+          />
+          <div style={{ position: 'absolute', right: '.3rem', display: 'flex', gap: '.3rem' }}>
+            <button
+              className="btn btn-primary"
+              style={{ padding: '.4rem .65rem', fontSize: '.68rem', borderRadius: '6px' }}
+              onClick={(e) => { handleTopup(e, 'needs'); setIsMobileAddOpen(false); }}
+            >
+              Budget
+            </button>
+            <button
+              className="btn"
+              style={{ padding: '.4rem .65rem', fontSize: '.68rem', background: 'rgba(16,185,129,.15)', color: 'var(--accent)', border: '1px solid rgba(16,185,129,.3)', borderRadius: '6px' }}
+              onClick={(e) => { handleTopup(e, 'savings'); setIsMobileAddOpen(false); }}
+            >
+              Savings
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="fade-in">
@@ -214,11 +385,28 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bento-stat db-col-3">
-          <div className="stat-label">Savings Balance</div>
-          <div className="stat-value">₹{Number(data.remaining_savings).toFixed(0)}</div>
-          <div className="stat-delta delta-up">
-            <Coins size={11} /> Growing
+        <div className="bento-stat db-col-3" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem' }}>
+          <div>
+            <div className="stat-label">Savings Balance</div>
+            <div className="stat-value">₹{Number(data.remaining_savings).toFixed(0)}</div>
+            <div className={`stat-delta ${data.savings_used > 0 ? 'delta-down' : 'delta-up'}`}>
+              <Coins size={11} /> {data.savings_used > 0 ? 'Dipped' : 'Growing'}
+            </div>
+          </div>
+          
+          <div style={{ position: 'relative', width: '48px', height: '48px' }} title={`${Number(Math.max(0, data.remaining_savings / (data.savings || 1) * 100)).toFixed(0)}% intact`}>
+            <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)', overflow: 'visible' }}>
+              <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+              <circle cx="18" cy="18" r="16" fill="none" stroke="var(--primary)" strokeWidth="3" 
+                strokeDasharray="100.5" 
+                strokeDashoffset={100.5 - (100.5 * Math.min(Math.max(0, data.remaining_savings / (data.savings || 1)), 1))} 
+                strokeLinecap="round" 
+                style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+              />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#fff' }}>
+              {Number(Math.max(0, data.remaining_savings / (data.savings || 1) * 100)).toFixed(0)}%
+            </div>
           </div>
         </div>
 
@@ -284,109 +472,9 @@ export default function Dashboard() {
 
       {/* Main Grid: Forms and Lists */}
       <div id="main-grid" style={{ marginBottom: '1.5rem' }}>
-        {/* Log Transaction Form */}
-        <div className="add-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '1.25rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: 'rgba(99,102,241,.15)', border: '1px solid rgba(99,102,241,.25)', display: 'flex', alignItems: 'center', justify: 'center' }}>
-              <Plus size={16} color="#6366f1" />
-            </div>
-            <h3 style={{ fontSize: '.95rem', fontWeight: 800, color: '#fff', margin: 0 }}>Add Transaction</h3>
-          </div>
-          
-          <form onSubmit={handleAddExpense}>
-            <div className="form-group">
-              <label htmlFor="amount-input">Amount (₹)</label>
-              <input
-                type="number"
-                step="0.01"
-                id="amount-input"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Category</label>
-              <div className="category-grid">
-                {CATEGORIES.map((cat) => (
-                  <div
-                    key={cat.name}
-                    className={`cat-chip ${category === cat.name ? 'selected' : ''}`}
-                    onClick={() => setCategory(cat.name)}
-                  >
-                    <span>{cat.emoji}</span>
-                    <span>{cat.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="note-input">Note</label>
-              <input
-                type="text"
-                id="note-input"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="What was this for?"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="expense-date">Date</label>
-              <input
-                type="date"
-                id="expense-date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-              />
-            </div>
-            
-            <button type="submit" className="btn btn-primary btn-full" disabled={isSubmitting}>
-              LOG EXPENSE
-            </button>
-          </form>
-
-          {/* Quick Top-ups */}
-          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-            <div style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'rgba(255,255,255,.3)', marginBottom: '.85rem' }}>Quick Top-up</div>
-            <div style={{ display: 'flex', gap: '.6rem', marginBottom: '.6rem', flexWrap: 'wrap' }}>
-              <button className="btn btn-ghost btn-full" style={{ fontSize: '.72rem', padding: '.6rem .75rem', flex: 1 }} onClick={(e) => handleTopup(e, 'needs', 500)}>
-                + ₹500 Budget
-              </button>
-              <button className="btn btn-ghost btn-full" style={{ fontSize: '.72rem', padding: '.6rem .75rem', flex: 1 }} onClick={(e) => handleTopup(e, 'savings', 1000)}>
-                + ₹1k Savings
-              </button>
-            </div>
-            
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type="number"
-                value={customTopup}
-                onChange={(e) => setCustomTopup(e.target.value)}
-                placeholder="Custom amount..."
-                style={{ width: '100%', padding: '.7rem', paddingRight: '160px', fontSize: '.8rem' }}
-              />
-              <div style={{ position: 'absolute', right: '.3rem', display: 'flex', gap: '.3rem' }}>
-                <button
-                  className="btn btn-primary"
-                  style={{ padding: '.4rem .65rem', fontSize: '.68rem', borderRadius: '6px' }}
-                  onClick={(e) => handleTopup(e, 'needs')}
-                >
-                  Budget
-                </button>
-                <button
-                  className="btn"
-                  style={{ padding: '.4rem .65rem', fontSize: '.68rem', background: 'rgba(16,185,129,.15)', color: 'var(--accent)', border: '1px solid rgba(16,185,129,.3)', borderRadius: '6px' }}
-                  onClick={(e) => handleTopup(e, 'savings')}
-                >
-                  Savings
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Log Transaction Form (Desktop) */}
+        <div className="add-card desktop-add-card">
+          {renderAddForm()}
         </div>
 
         {/* Recent Activity List */}
@@ -417,6 +505,19 @@ export default function Dashboard() {
                     <div className="activity-date">{exp.date}</div>
                   </div>
                   <div className="activity-actions">
+                    <button 
+                      className="act-btn" 
+                      onClick={() => {
+                        setAmount(exp.amount);
+                        setCategory(exp.category);
+                        setNote((exp.note || '') + ' (Copy)');
+                        setExpenseDate(new Date().toISOString().split('T')[0]);
+                        setIsMobileAddOpen(true);
+                      }}
+                      title="Duplicate"
+                    >
+                      <Copy size={13} />
+                    </button>
                     <button className="act-btn" onClick={() => navigate(`/edit/${exp.id}`)}>
                       <Edit size={12} />
                     </button>
@@ -427,17 +528,31 @@ export default function Dashboard() {
                 </div>
               ))
             ) : (
-              <div className="empty-state">
-                <div className="empty-icon">
-                  <Coins size={24} color="rgba(255,255,255,.3)" />
-                </div>
-                <div className="empty-title">No transactions yet</div>
-                <div className="empty-sub">Log your first expense using the form to get started.</div>
-              </div>
+              <EmptyState 
+                icon={CalendarIcon} 
+                title="No activity yet" 
+                subtitle="Your recent transactions will appear here." 
+              />
             )}
           </div>
         </div>
       </div>
+
+      {/* Mobile FAB */}
+      <button className="fab" onClick={() => setIsMobileAddOpen(true)}>
+        <Plus size={24} />
+      </button>
+
+      {/* Mobile Add Modal */}
+      {isMobileAddOpen && (
+        <div className="modal-overlay" onClick={(e) => {
+          if (e.target.className === 'modal-overlay') setIsMobileAddOpen(false);
+        }}>
+          <div className="modal-content">
+            {renderAddForm()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

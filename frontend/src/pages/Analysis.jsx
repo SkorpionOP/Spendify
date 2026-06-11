@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import { useToast } from '../hooks/useToast';
+import { useDateRange } from '../hooks/useDateRange';
+import { DateRangeFilter } from '../components/DateRangeFilter';
+import { EmptyState } from '../components/EmptyState';
 import { PieChart, TrendingUp, Calendar, ChevronLeft, ChevronRight, DollarSign } from 'lucide-react';
 
 const CATEGORIES = [
@@ -27,18 +30,13 @@ export default function Analysis() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Month selector
-  const today = new Date();
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1);
-
+  const { startDate, endDate } = useDateRange();
   const { showToast } = useToast();
 
   const fetchAnalysisData = async () => {
     setLoading(true);
     try {
-      const formattedMonth = String(currentMonth).padStart(2, '0');
-      const response = await api.get(`/analysis?month=${currentYear}-${formattedMonth}`);
+      const response = await api.get(`/analysis?start_date=${startDate}&end_date=${endDate}`);
       setData(response.data);
     } catch (err) {
       showToast('Failed to load analysis metrics.', 'error');
@@ -49,35 +47,19 @@ export default function Analysis() {
 
   useEffect(() => {
     fetchAnalysisData();
-  }, [currentYear, currentMonth]);
-
-  const handlePrevMonth = () => {
-    if (currentMonth === 1) {
-      setCurrentMonth(12);
-      setCurrentYear(prev => prev - 1);
-    } else {
-      setCurrentMonth(prev => prev - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (currentMonth === 12) {
-      setCurrentMonth(1);
-      setCurrentYear(prev => prev + 1);
-    } else {
-      setCurrentMonth(prev => prev + 1);
-    }
-  };
+  }, [startDate, endDate]);
 
   const getEmoji = (catName) => {
     return CATEGORIES.find(c => c.name === catName)?.emoji || '📦';
   };
 
-  // SVG Area Line Chart Renderer
-  const renderTrendChart = (dates, totals) => {
-    if (!dates || dates.length === 0) {
-      return <div style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', textAlign: 'center', padding: '4rem 0' }}>No daily data available.</div>;
+  // SVG Area Line Chart Renderer with useMemo
+  const trendChart = useMemo(() => {
+    if (!data || !data.daily_dates || data.daily_dates.length === 0) {
+      return <EmptyState icon={TrendingUp} title="No trend data" subtitle="Log expenses to see daily spending trends." />;
     }
+    const dates = data.daily_dates;
+    const totals = data.daily_totals;
     const maxVal = Math.max(...totals, 100);
     const height = 180;
     const width = 600;
@@ -179,44 +161,45 @@ export default function Analysis() {
         })}
       </svg>
     );
-  };
+  }, [data?.daily_dates, data?.daily_totals]);
 
-  const getMonthName = (m) => {
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return monthNames[m - 1];
-  };
-
-  if (loading && !data) return <div className="text-center" style={{ marginTop: '4rem' }}>Loading analysis data...</div>;
+  if (loading && !data) {
+    return (
+      <div className="fade-in" style={{ maxWidth: '1000px', margin: '2rem auto 0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
+          <div className="skeleton" style={{ width: '36px', height: '36px', borderRadius: '10px' }}></div>
+          <div>
+            <div className="skeleton" style={{ width: '150px', height: '24px', marginBottom: '4px' }}></div>
+            <div className="skeleton" style={{ width: '200px', height: '14px' }}></div>
+          </div>
+        </div>
+        <div className="skeleton" style={{ width: '100%', height: '70px', marginBottom: '1.5rem', borderRadius: '18px' }}></div>
+        <div className="stat-grid" style={{ marginBottom: '1.5rem' }}>
+          <div className="stat-card skeleton" style={{ height: '100px' }}></div>
+          <div className="stat-card skeleton" style={{ height: '100px' }}></div>
+          <div className="stat-card skeleton" style={{ height: '100px' }}></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
+          <div className="glass-card skeleton" style={{ height: '250px' }}></div>
+          <div className="glass-card skeleton" style={{ height: '250px' }}></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fade-in" style={{ maxWidth: '1000px', margin: '2rem auto 0 auto' }}>
-      {/* Month Selection Bar */}
-      <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h2 style={{ fontSize: '1.25rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-              <PieChart size={18} /> Budget Analysis
-            </h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: 0, marginTop: '0.15rem' }}>
-              Showing visual insights for {getMonthName(currentMonth)} {currentYear}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button className="act-btn" onClick={handlePrevMonth}>
-              <ChevronLeft size={16} />
-            </button>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', padding: '0 0.5rem' }}>
-              {getMonthName(currentMonth).substring(0, 3)} {currentYear}
-            </span>
-            <button className="act-btn" onClick={handleNextMonth}>
-              <ChevronRight size={16} />
-            </button>
-          </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
+        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justify: 'center', color: 'var(--primary)' }}>
+          <PieChart size={18} />
+        </div>
+        <div>
+          <h2 style={{ fontSize: '1.25rem', color: '#fff', margin: 0 }}>Budget Analysis</h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: 0 }}>Visual insights for your spending</p>
         </div>
       </div>
+
+      <DateRangeFilter />
 
       {loading ? (
         <div className="text-center" style={{ padding: '4rem 0' }}>Updating metrics...</div>
@@ -225,7 +208,7 @@ export default function Analysis() {
           {/* Top Info Bento Row */}
           <div className="stat-grid" style={{ marginBottom: 0 }}>
             <div className="stat-card">
-              <span className="stat-label">Total Month Spent</span>
+              <span className="stat-label">Total Period Spent</span>
               <span className="stat-value" style={{ color: 'var(--danger)' }}>
                 ₹{Number(data.total_spent).toFixed(0)}
               </span>
@@ -239,10 +222,41 @@ export default function Analysis() {
             </div>
 
             <div className="stat-card">
+              <span className="stat-label">Previous Period Delta</span>
+              <div className="stat-value" style={{ color: data.spend_delta_pct > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                {data.spend_delta_pct > 0 ? '+' : ''}{Number(data.spend_delta_pct).toFixed(1)}%
+              </div>
+              <div className={`stat-delta ${data.spend_delta_pct > 0 ? 'delta-down' : 'delta-up'}`}>
+                vs previous period
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-label">Highest Expense</span>
+              <div className="stat-value" style={{ color: 'var(--warning)' }}>
+                {data.highest_tx ? `₹${Number(data.highest_tx.amount).toFixed(0)}` : 'N/A'}
+              </div>
+              <div className="stat-delta">
+                {data.highest_tx ? `${getEmoji(data.highest_tx.category)} ${data.highest_tx.category}` : 'No data'}
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-label">Income vs Expense</span>
+              <div className="stat-value">
+                {data.salary ? `₹${Number(data.salary - data.total_spent).toFixed(0)}` : 'N/A'}
+              </div>
+              <div className={`stat-delta ${data.salary - data.total_spent >= 0 ? 'delta-up' : 'delta-down'}`}>
+                {data.salary - data.total_spent >= 0 ? 'Surplus (assuming 1mo)' : 'Deficit'}
+              </div>
+            </div>
+
+            <div className="stat-card">
               <span className="stat-label">Total Needs Limit</span>
               <span className="stat-value">
                 ₹{Number(data.needs).toFixed(0)}
               </span>
+              <div className="stat-delta">Monthly cap</div>
             </div>
           </div>
 
@@ -254,7 +268,7 @@ export default function Analysis() {
                 <TrendingUp size={16} /> Daily Spending Trend
               </h3>
               <div className="chart-container" style={{ height: 'auto' }}>
-                {renderTrendChart(data.daily_dates, data.daily_totals)}
+                {trendChart}
               </div>
             </div>
 
@@ -292,9 +306,11 @@ export default function Analysis() {
                     );
                   })
                 ) : (
-                  <div style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', textAlign: 'center', padding: '2rem 0' }}>
-                    No categorized expenses recorded this month.
-                  </div>
+                  <EmptyState 
+                    icon={PieChart} 
+                    title="No category data" 
+                    subtitle="Log expenses to see category breakdowns." 
+                  />
                 )}
               </div>
             </div>

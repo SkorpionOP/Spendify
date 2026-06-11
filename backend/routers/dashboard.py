@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime
+from fastapi import APIRouter, Depends, Query
+from datetime import datetime, timedelta
+from typing import Optional
 from backend.models.db_wrapper import get_db, PostgresWrapper
 from backend.routers.auth import get_current_user_id
 from backend.services.carry_forward import handle_new_month
@@ -7,9 +8,20 @@ from backend.services.carry_forward import handle_new_month
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("")
-def get_dashboard(uid: int = Depends(get_current_user_id), db: PostgresWrapper = Depends(get_db)):
+def get_dashboard(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    uid: int = Depends(get_current_user_id), 
+    db: PostgresWrapper = Depends(get_db)
+):
     today = datetime.today()
-    month_str = f"{today.year}-{today.month:02d}"
+    if not start_date or not end_date:
+        start_date = f"{today.year}-{today.month:02d}-01"
+        if today.month == 12:
+            next_month = datetime(today.year + 1, 1, 1)
+        else:
+            next_month = datetime(today.year, today.month + 1, 1)
+        end_date = (next_month - timedelta(days=1)).strftime("%Y-%m-%d")
 
     finance = db.execute(
         "SELECT * FROM finance WHERE user_id=?", (uid,)
@@ -21,19 +33,20 @@ def get_dashboard(uid: int = Depends(get_current_user_id), db: PostgresWrapper =
     # Execute carry-forward logic
     handle_new_month(uid, db, finance)
 
-    # Consolidated stats query
+    # Consolidated stats query based on date range
     row = db.execute("""
         SELECT
             f.needs, f.savings, f.salary,
-            COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s AND date LIKE %s), 0) AS month_spent,
+            COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s AND date >= %s AND date <= %s), 0) AS month_spent,
             COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s), 0) AS total_ever,
-            (SELECT category FROM expenses WHERE user_id=%s GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1) AS top_category,
-            COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1), 0) AS top_category_total
+            (SELECT category FROM expenses WHERE user_id=%s AND date >= %s AND date <= %s GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1) AS top_category,
+            COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s AND date >= %s AND date <= %s GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1), 0) AS top_category_total
         FROM finance f WHERE f.user_id=%s
-    """, (uid, month_str + "%", uid, uid, uid, uid)).fetchone()
+    """, (uid, start_date, end_date, uid, uid, start_date, end_date, uid, start_date, end_date, uid)).fetchone()
 
     expenses = db.execute(
-        "SELECT * FROM expenses WHERE user_id=? ORDER BY date DESC, id DESC LIMIT 10", (uid,)
+        "SELECT * FROM expenses WHERE user_id=? AND date >= ? AND date <= ? ORDER BY date DESC, id DESC LIMIT 10", 
+        (uid, start_date, end_date)
     ).fetchall()
 
     top_cat = None

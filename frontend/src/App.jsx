@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
 import { LayoutProvider, Layout } from './components/Layout';
+import { DateRangeProvider } from './hooks/useDateRange';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -74,11 +75,13 @@ function App() {
     <Router>
       <AuthProvider>
         <ToastProvider>
-          <LayoutProvider>
-            <Layout>
-              <AppRoutes />
-            </Layout>
-          </LayoutProvider>
+          <DateRangeProvider>
+            <LayoutProvider>
+              <Layout>
+                <AppRoutes />
+              </Layout>
+            </LayoutProvider>
+          </DateRangeProvider>
         </ToastProvider>
       </AuthProvider>
     </Router>

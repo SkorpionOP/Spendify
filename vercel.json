@@ -18,7 +18,38 @@
             "dest": "backend/main.py"
         },
         {
-            "handle": "filesystem"
+            "src": "/assets/(.*)",
+            "dest": "frontend/dist/assets/$1"
+        },
+        {
+            "src": "/sw.js",
+            "dest": "frontend/dist/sw.js",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        },
+        {
+            "src": "/workbox-(.*)\\.js",
+            "dest": "frontend/dist/workbox-$1.js",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        },
+        {
+            "src": "/manifest\\.(webmanifest|json)",
+            "dest": "frontend/dist/manifest.$1"
+        },
+        {
+            "src": "/favicon\\.(ico|svg)",
+            "dest": "frontend/dist/favicon.$1"
+        },
+        {
+            "src": "/icon(.*)\\.png",
+            "dest": "frontend/dist/icon$1.png"
+        },
+        {
+            "src": "/icon\\.svg",
+            "dest": "frontend/dist/icon.svg"
         },
         {
             "src": "/(.*)",

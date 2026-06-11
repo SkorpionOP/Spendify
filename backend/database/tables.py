@@ -1,9 +1,9 @@
 def init_tables():
     from backend.database.connection import get_db_connection
     from backend.models.db_wrapper import PostgresWrapper
-    conn = get_db_connection()
-    db = PostgresWrapper(conn)
     try:
+        conn = get_db_connection()
+        db = PostgresWrapper(conn)
         db.execute('''
             CREATE TABLE IF NOT EXISTS alerts (
                 id SERIAL PRIMARY KEY,
@@ -56,4 +56,8 @@ def init_tables():
     except Exception as e:
         print("Database initialization error:", e)
     finally:
-        db.close()
+        if 'db' in locals():
+            try:
+                db.close()
+            except Exception:
+                pass

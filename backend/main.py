@@ -18,10 +18,9 @@ except ImportError:
     sys.modules['backend'] = backend_module
 
 import uvicorn
+import traceback
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.database.tables import init_tables
-from backend.routers import auth, dashboard, expenses, budget, analysis
 
 app = FastAPI(
     title="Spendly API",
@@ -32,28 +31,43 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Startup Table Initialization
-@app.on_event("startup")
-def startup_event():
-    init_tables()
+error_details = None
 
-# Root Healthcheck
+try:
+    from backend.database.tables import init_tables
+    from backend.routers import auth, dashboard, expenses, budget, analysis
+    
+    # Startup Table Initialization
+    @app.on_event("startup")
+    def startup_event():
+        init_tables()
+
+    # Include Routers
+    app.include_router(auth.router, prefix="/api")
+    app.include_router(dashboard.router, prefix="/api")
+    app.include_router(expenses.router, prefix="/api")
+    app.include_router(budget.router, prefix="/api")
+    app.include_router(analysis.router, prefix="/api")
+    
+except Exception as e:
+    error_details = traceback.format_exc()
+    print("CRITICAL IMPORT ERROR:", error_details)
+    
+    @app.get("/api/auth/firebase-config")
+    def fallback_firebase():
+        return {"status": "error", "error": error_details}
+
 @app.get("/api/health")
 def health_check():
+    if error_details:
+        return {"status": "error", "error": error_details}
     return {"status": "healthy", "service": "Spendly API"}
-
-# Include Routers
-app.include_router(auth.router, prefix="/api")
-app.include_router(dashboard.router, prefix="/api")
-app.include_router(expenses.router, prefix="/api")
-app.include_router(budget.router, prefix="/api")
-app.include_router(analysis.router, prefix="/api")
 
 if __name__ == "__main__":
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

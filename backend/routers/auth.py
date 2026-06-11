@@ -41,7 +41,7 @@ def signup(payload: SignupRequest, response: Response, db: PostgresWrapper = Dep
     
     user = db.execute("SELECT * FROM users WHERE email=?", (payload.email,)).fetchone()
     token = sign_user_id(user["id"])
-    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax")
+    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=2592000)
     return AuthResponse(
         status="success",
         user_id=user["id"],
@@ -60,7 +60,7 @@ def login(payload: LoginRequest, response: Response, db: PostgresWrapper = Depen
         raise HTTPException(status_code=400, detail="Invalid email or password.")
         
     token = sign_user_id(user["id"])
-    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax")
+    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=2592000)
     return AuthResponse(
         status="success",
         user_id=user["id"],
@@ -102,7 +102,7 @@ def auth_firebase(payload: FirebaseLinkRequest, response: Response, db: Postgres
         user = db.execute("SELECT * FROM users WHERE uid=?", (uid,)).fetchone()
 
     token = sign_user_id(user["id"])
-    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax")
+    response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=2592000)
     return AuthResponse(
         status="success",
         user_id=user["id"],

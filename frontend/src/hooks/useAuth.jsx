@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -27,7 +29,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    checkAuth();
+    // Listen for Firebase Auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User logged in via Firebase -> Re-sync backend session cookie
+        try {
+          await firebaseLogin(
+            firebaseUser.uid,
+            firebaseUser.email,
+            firebaseUser.displayName || firebaseUser.phoneNumber || 'Google User',
+            firebaseUser.photoURL
+          );
+        } catch (err) {
+          console.error("Failed to sync Firebase session with backend", err);
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // No Firebase user -> Check backend session cookie
+        await checkAuth();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email, password) => {
@@ -59,6 +84,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await api.post('/auth/logout');
+      await signOut(auth);
     } catch (e) {
       // Ignore network errors on logout
     }

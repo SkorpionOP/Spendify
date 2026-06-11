@@ -1,37 +1,21 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import api from './api';
 
-let authInstance = null;
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
 
-export async function getFirebaseAuth() {
-  if (authInstance) return authInstance;
-
-  try {
-    const response = await api.get('/auth/firebase-config');
-    const firebaseConfig = response.data;
-
-    if (!firebaseConfig.apiKey) {
-      console.warn("Firebase API key is missing from server configuration.");
-      return null;
-    }
-
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    authInstance = getAuth(app);
-    return authInstance;
-  } catch (error) {
-    console.error('Failed to initialize Firebase Auth:', error);
-    return null;
-  }
-}
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export const auth = getAuth(app);
 
 export async function signInWithGoogle() {
-  const auth = await getFirebaseAuth();
-  if (!auth) {
-    throw new Error('Firebase Auth is not configured on the server.');
-  }
   const provider = new GoogleAuthProvider();
-  // Ensure we prompt for account selection
   provider.setCustomParameters({ prompt: 'select_account' });
   const result = await signInWithPopup(auth, provider);
   return result.user;

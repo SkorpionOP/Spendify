@@ -1,18 +1,22 @@
 def init_tables():
     from backend.database.connection import get_db_connection
     from backend.models.db_wrapper import PostgresWrapper
+
     try:
         conn = get_db_connection()
         db = PostgresWrapper(conn)
-        db.execute('''
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS alerts (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER,
                 message TEXT,
                 date TEXT
             )
-        ''')
-        db.execute('''
+        """
+        )
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 email TEXT UNIQUE,
@@ -21,8 +25,10 @@ def init_tables():
                 name TEXT,
                 profile_pic TEXT
             )
-        ''')
-        db.execute('''
+        """
+        )
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS finance (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER UNIQUE,
@@ -32,8 +38,10 @@ def init_tables():
                 needs REAL,
                 savings REAL
             )
-        ''')
-        db.execute('''
+        """
+        )
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS monthly_budget (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER,
@@ -41,8 +49,10 @@ def init_tables():
                 needs REAL,
                 savings REAL
             )
-        ''')
-        db.execute('''
+        """
+        )
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS expenses (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER,
@@ -51,12 +61,13 @@ def init_tables():
                 note TEXT DEFAULT '',
                 date TEXT
             )
-        ''')
+        """
+        )
         db.commit()
     except Exception as e:
         print("Database initialization error:", e)
     finally:
-        if 'db' in locals():
+        if "db" in locals():
             try:
                 db.close()
             except Exception:

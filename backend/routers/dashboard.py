@@ -7,12 +7,13 @@ from backend.services.carry_forward import handle_new_month
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
+
 @router.get("")
 def get_dashboard(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    uid: int = Depends(get_current_user_id), 
-    db: PostgresWrapper = Depends(get_db)
+    uid: int = Depends(get_current_user_id),
+    db: PostgresWrapper = Depends(get_db),
 ):
     today = datetime.today()
     if not start_date or not end_date:
@@ -23,18 +24,17 @@ def get_dashboard(
             next_month = datetime(today.year, today.month + 1, 1)
         end_date = (next_month - timedelta(days=1)).strftime("%Y-%m-%d")
 
-    finance = db.execute(
-        "SELECT * FROM finance WHERE user_id=?", (uid,)
-    ).fetchone()
+    finance = db.execute("SELECT * FROM finance WHERE user_id=?", (uid,)).fetchone()
 
-    if not finance or finance.get('salary') is None:
+    if not finance or finance.get("salary") is None:
         return {"needs_setup": True}
 
     # Execute carry-forward logic
     handle_new_month(uid, db, finance)
 
     # Consolidated stats query based on date range
-    row = db.execute("""
+    row = db.execute(
+        """
         SELECT
             f.needs, f.savings, f.salary,
             COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s AND date >= %s AND date <= %s), 0) AS month_spent,
@@ -42,23 +42,34 @@ def get_dashboard(
             (SELECT category FROM expenses WHERE user_id=%s AND date >= %s AND date <= %s GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1) AS top_category,
             COALESCE((SELECT SUM(amount) FROM expenses WHERE user_id=%s AND date >= %s AND date <= %s GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1), 0) AS top_category_total
         FROM finance f WHERE f.user_id=%s
-    """, (uid, start_date, end_date, uid, uid, start_date, end_date, uid, start_date, end_date, uid)).fetchone()
+    """,
+        (
+            uid,
+            start_date,
+            end_date,
+            uid,
+            uid,
+            start_date,
+            end_date,
+            uid,
+            start_date,
+            end_date,
+            uid,
+        ),
+    ).fetchone()
 
     expenses = db.execute(
-        "SELECT * FROM expenses WHERE user_id=? AND date >= ? AND date <= ? ORDER BY date DESC, id DESC LIMIT 10", 
-        (uid, start_date, end_date)
+        "SELECT * FROM expenses WHERE user_id=? AND date >= ? AND date <= ? ORDER BY date DESC, id DESC LIMIT 10",
+        (uid, start_date, end_date),
     ).fetchall()
 
     top_cat = None
-    if row.get('top_category'):
-        top_cat = {
-            'category': row['top_category'],
-            'total': row['top_category_total']
-        }
+    if row.get("top_category"):
+        top_cat = {"category": row["top_category"], "total": row["top_category_total"]}
 
-    needs = row['needs']
-    savings = row['savings']
-    total_spent = row['month_spent']
+    needs = row["needs"]
+    savings = row["savings"]
+    total_spent = row["month_spent"]
 
     if total_spent <= needs:
         used_needs = total_spent
@@ -73,7 +84,9 @@ def get_dashboard(
 
     alert = None
     if usage_percent >= 100:
-        alert = f"🚨 You have used {usage_percent}% of your budget — dipping into savings!"
+        alert = (
+            f"🚨 You have used {usage_percent}% of your budget — dipping into savings!"
+        )
     elif usage_percent >= 90:
         alert = f"⚠️ You've used {usage_percent}% of your budget. Almost there!"
     elif usage_percent >= 50:
@@ -81,7 +94,7 @@ def get_dashboard(
 
     return {
         "needs_setup": False,
-        "salary": row['salary'],
+        "salary": row["salary"],
         "needs": needs,
         "savings": savings,
         "total_spent": total_spent,
@@ -92,5 +105,5 @@ def get_dashboard(
         "top_category": top_cat,
         "alert": alert,
         "expenses": expenses,
-        "now_hour": today.hour
+        "now_hour": today.hour,
     }

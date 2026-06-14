@@ -33,7 +33,10 @@ export default function Setup() {
   };
 
   useEffect(() => {
-    checkExistingConfig();
+    const init = async () => {
+      await checkExistingConfig();
+    };
+    init();
   }, []);
 
   const handleSliderChange = (e) => {

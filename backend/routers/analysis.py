@@ -6,26 +6,29 @@ from backend.routers.auth import get_current_user_id
 
 router = APIRouter(prefix="/analysis", tags=["Analysis"])
 
+
 @router.get("")
 def get_analysis(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     month: Optional[str] = Query(None),
     uid: int = Depends(get_current_user_id),
-    db: PostgresWrapper = Depends(get_db)
+    db: PostgresWrapper = Depends(get_db),
 ):
     today = datetime.today()
     if not start_date or not end_date:
         if month:
             start_date = f"{month}-01"
             # Get last day of month
-            year, m = map(int, month.split('-'))
+            year, m = map(int, month.split("-"))
             if m == 12:
                 end_date = f"{year+1}-01-01"
             else:
                 end_date = f"{year}-{m+1:02d}-01"
             # Subtract 1 day to get the exact last day
-            end_date = (datetime.strptime(end_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+            end_date = (
+                datetime.strptime(end_date, "%Y-%m-%d") - timedelta(days=1)
+            ).strftime("%Y-%m-%d")
         else:
             start_date = f"{today.year}-{today.month:02d}-01"
             if today.month == 12:
@@ -37,28 +40,28 @@ def get_analysis(
     categories = db.execute(
         """SELECT category, SUM(amount) as total FROM expenses
            WHERE user_id=? AND date >= ? AND date <= ? GROUP BY category ORDER BY total DESC""",
-        (uid, start_date, end_date)
+        (uid, start_date, end_date),
     ).fetchall()
 
     daily_stats = db.execute(
         """SELECT date, SUM(amount) as total FROM expenses
            WHERE user_id=? AND date >= ? AND date <= ? GROUP BY date ORDER BY date ASC""",
-        (uid, start_date, end_date)
+        (uid, start_date, end_date),
     ).fetchall()
 
     finance = db.execute(
         "SELECT needs, salary FROM finance WHERE user_id=?", (uid,)
     ).fetchone()
 
-    needs_budget = finance['needs'] if finance else 0
-    salary = finance['salary'] if finance else 0
-    total_spent = sum(c['total'] for c in categories)
-    
+    needs_budget = finance["needs"] if finance else 0
+    salary = finance["salary"] if finance else 0
+    total_spent = sum(c["total"] for c in categories)
+
     highest_tx = db.execute(
         """SELECT id, amount, category, note, date FROM expenses 
            WHERE user_id=? AND date >= ? AND date <= ? 
            ORDER BY amount DESC LIMIT 1""",
-        (uid, start_date, end_date)
+        (uid, start_date, end_date),
     ).fetchone()
 
     # Calculate daily avg and previous period stats based on date range difference
@@ -67,26 +70,26 @@ def get_analysis(
         d2 = datetime.strptime(end_date, "%Y-%m-%d")
         days_diff = (d2 - d1).days + 1
         num_days = max(1, days_diff)
-        
+
         # Previous period calculation
         prev_d2 = d1 - timedelta(days=1)
         prev_d1 = prev_d2 - timedelta(days=days_diff - 1)
         prev_total = db.execute(
             """SELECT SUM(amount) as total FROM expenses
                WHERE user_id=? AND date >= ? AND date <= ?""",
-            (uid, prev_d1.strftime("%Y-%m-%d"), prev_d2.strftime("%Y-%m-%d"))
+            (uid, prev_d1.strftime("%Y-%m-%d"), prev_d2.strftime("%Y-%m-%d")),
         ).fetchone()
-        prev_spent = prev_total['total'] if prev_total and prev_total['total'] else 0
-    except:
+        prev_spent = prev_total["total"] if prev_total and prev_total["total"] else 0
+    except Exception:
         num_days = len(daily_stats) or 1
         prev_spent = 0
-        
+
     daily_avg = total_spent / num_days
-    
-    daily_dates = [d['date'][-2:] for d in daily_stats]
-    daily_totals = [d['total'] for d in daily_stats]
-    labels = [c['category'] for c in categories]
-    values = [c['total'] for c in categories]
+
+    daily_dates = [d["date"][-2:] for d in daily_stats]
+    daily_totals = [d["total"] for d in daily_stats]
+    labels = [c["category"] for c in categories]
+    values = [c["total"] for c in categories]
 
     # Calculate Month-over-Month / Period-over-Period change
     spend_delta_pct = 0
@@ -109,5 +112,5 @@ def get_analysis(
         "labels": labels,
         "values": values,
         "daily_dates": daily_dates,
-        "daily_totals": daily_totals
+        "daily_totals": daily_totals,
     }

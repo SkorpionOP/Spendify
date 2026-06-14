@@ -69,7 +69,11 @@ export default function History() {
   };
 
   useEffect(() => {
-    fetchHistory();
+    const init = async () => {
+      await fetchHistory();
+    };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, isFiltered]);
 
   const handleDeleteExpense = async (id) => {

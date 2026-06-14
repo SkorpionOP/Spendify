@@ -10,22 +10,22 @@ sys.path.append(parent_dir)
 # In Vercel serverless functions, 'backend' folder contents might be deployed to root.
 # We alias 'backend' to the current directory to fix module imports.
 import types
+
 try:
     import backend
 except ImportError:
-    backend_module = types.ModuleType('backend')
+    backend_module = types.ModuleType("backend")
     backend_module.__path__ = [current_dir]
-    sys.modules['backend'] = backend_module
+    sys.modules["backend"] = backend_module
 
 import uvicorn
-import traceback
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Spendly API",
     description="REST API backend for Spendly Personal Expense Tracker",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS Configuration
@@ -42,7 +42,7 @@ error_details = None
 try:
     from backend.database.tables import init_tables
     from backend.routers import auth, dashboard, expenses, budget, analysis
-    
+
     # Startup Table Initialization
     @app.on_event("startup")
     def startup_event():
@@ -54,18 +54,20 @@ try:
     app.include_router(expenses.router, prefix="/api")
     app.include_router(budget.router, prefix="/api")
     app.include_router(analysis.router, prefix="/api")
-    
-except Exception as e:
+
+except Exception:
     error_details = traceback.format_exc()
     print("CRITICAL IMPORT ERROR:", error_details)
-    
+
     @app.get("/api/auth/firebase-config")
     def fallback_firebase():
         return {"status": "error", "error": error_details}
 
+
 @app.get("/")
 def root():
     return {"status": "backend alive"}
+
 
 @app.get("/api/health")
 def health_check():
@@ -73,16 +75,20 @@ def health_check():
         return {"status": "error", "error": error_details}
     return {"status": "ok"}
 
+
 @app.get("/api/routes")
 def list_routes():
     routes = []
     for route in app.routes:
-        routes.append({
-            "path": route.path,
-            "methods": list(route.methods) if hasattr(route, 'methods') else [],
-            "name": route.name if hasattr(route, 'name') else None
-        })
+        routes.append(
+            {
+                "path": route.path,
+                "methods": list(route.methods) if hasattr(route, "methods") else [],
+                "name": route.name if hasattr(route, "name") else None,
+            }
+        )
     return {"routes": routes}
+
 
 if __name__ == "__main__":
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

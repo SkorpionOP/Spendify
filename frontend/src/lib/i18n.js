@@ -26,9 +26,13 @@ export const CURRENCIES = [
 // Built for an Indonesian user: default to Bahasa Indonesia; the ID/EN switch is always one tap away.
 export const defaultLang = () => 'id';
 
-const cfg = { lang: 'id', locale: 'id-ID', currency: 'IDR' };
+const cfg = { lang: 'id', locale: 'id-ID', currency: 'IDR', payday: 1 };
 
-export const configure = ({ lang, currency } = {}) => {
+/** Paydays 1–28 are supported, so every month has the day. */
+export const clampPayday = (d) => Math.min(28, Math.max(1, Math.round(Number(d)) || 1));
+
+export const configure = ({ lang, currency, payday } = {}) => {
+  cfg.payday = clampPayday(payday);
   cfg.lang = LANGS.some((l) => l.code === lang) ? lang : 'id';
   cfg.locale = LANGS.find((l) => l.code === cfg.lang).locale;
   cfg.currency = CURRENCIES.some((c) => c.code === currency) ? currency : 'IDR';

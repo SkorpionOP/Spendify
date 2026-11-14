@@ -1,4 +1,4 @@
-import { addMonths, monthKey, toISODate } from './dates';
+import { addMonths, dayOfCycle, monthKey, toISODate } from './dates';
 import { monthSummary } from './money';
 
 /*
@@ -8,7 +8,7 @@ import { monthSummary } from './money';
 
 /** The month that just ended, if it is worth showing. */
 export const monthRecap = (state, now = new Date()) => {
-  if (now.getDate() > 7) return null;
+  if (dayOfCycle(toISODate(now)) > 7) return null;
   const prevKey = addMonths(monthKey(toISODate(now)), -1);
   if (state.startMonth > prevKey) return null;
   const m = monthSummary(state, prevKey);

@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Repeat, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { monthInsights } from '../lib/insights';
-import { currentMonth, dayLabel, monthLabel, shortDate } from '../lib/dates';
+import { currentMonth, cycleDate, dayLabel, monthLabel, shortDate } from '../lib/dates';
 import { category as catMeta } from '../lib/categories';
 import { compact, money, roundNice, tinyAmount } from '../lib/format';
 import { catName, getConfig, t, tn } from '../lib/i18n';
@@ -181,7 +181,7 @@ function PaceChart({ d }) {
         {last && <circle className="pc__dot" cx={x(last.day)} cy={y(last.total)} r={4.5} />}
         {ticks.map((day) => (
           <text key={day} className="pc__tick" x={x(day)} y={H - 6} textAnchor="middle">
-            {day}
+            {Number(cycleDate(d.key, day).slice(8))}
           </text>
         ))}
         {h != null && (
@@ -194,7 +194,7 @@ function PaceChart({ d }) {
       </svg>
       {h != null && (
         <div className="pc__tip private-num" style={{ left: `${Math.min(70, Math.max(30, (x(h) / W) * 100))}%` }}>
-          <strong>{shortDate(`${d.key}-${String(h).padStart(2, '0')}`)}</strong>
+          <strong>{shortDate(cycleDate(d.key, h))}</strong>
           {hNow ? (
             <>
               <span>{t('That day: {amount}', { amount: money(hNow.spent) })}</span>

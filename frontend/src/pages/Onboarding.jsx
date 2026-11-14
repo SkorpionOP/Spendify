@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, History } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { listSnapshots } from '../lib/persist';
-import { currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
+import { amountInWords, currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
 import { CURRENCIES, getConfig, t } from '../lib/i18n';
 import { dateTime } from '../lib/dates';
 import { SplitSlider } from '../components/SplitSlider';
+import { PaydayPicker } from '../components/PaydayPicker';
 import { LangSwitch } from '../components/LangSwitch';
 import { InstallHelp } from '../components/Nudges';
 import { GoalIllo, InstallIllo, PayIllo, PrivacyIllo } from '../components/Illustrations';
@@ -24,6 +25,8 @@ export default function Onboarding() {
   const [name, setName] = useState('');
   const [salary, setSalary] = useState('');
   const [needsPercent, setNeedsPercent] = useState(70);
+  // Most private employers in Indonesia pay on the 25th, so start there.
+  const [payday, setPayday] = useState(state.settings.payday > 1 ? state.settings.payday : 25);
   const [error, setError] = useState('');
 
   // If this device has an automatic copy (e.g. after "Delete all data"), offer it first.
@@ -46,7 +49,7 @@ export default function Onboarding() {
   const finish = (useChoices) => {
     const target = parseAmountInput(goalTarget);
     if (useChoices && wantGoal && goalName.trim() && !(target > 0)) return setError(t('Enter an amount above zero.'));
-    setup({ name, salary: income, needsPercent });
+    setup({ name, salary: income, needsPercent, payday });
     if (useChoices) {
       updateSettings({ trackPayment, hideAmounts });
       if (wantGoal && goalName.trim() && target > 0) addGoal({ name: goalName, target });
@@ -200,7 +203,7 @@ export default function Onboarding() {
 
         <div className="sheet__row onboard__money">
           <label className="field">
-            <span className="field-label">{t('Monthly income')}</span>
+            <span className="field-label">{t('Monthly take-home pay')}</span>
             <div className="input-prefix">
               <span aria-hidden="true">{currencySymbol()}</span>
               <input
@@ -210,6 +213,7 @@ export default function Onboarding() {
                 placeholder={getConfig().currency === 'IDR' ? '5.000.000' : '2,000'}
               />
             </div>
+            {income > 0 && amountInWords(income) && <span className="onboard__amount-words">{amountInWords(income)}</span>}
           </label>
           <label className="field">
             <span className="field-label">{t('Currency')}</span>
@@ -229,6 +233,10 @@ export default function Onboarding() {
           </label>
         </div>
 
+        <p className="muted small onboard__take-home">{t('take-home-hint')}</p>
+
+        <PaydayPicker value={payday} onChange={setPayday} id="setup-payday" />
+
         <SplitSlider value={needsPercent} onChange={setNeedsPercent} income={income} />
 
         {error && <p className="field-error">{error}</p>}
@@ -238,7 +246,7 @@ export default function Onboarding() {
         </button>
         <p className="onboard__fine">
           {income > 0
-            ? t('{spend} a month to spend, {save} to save. You can change this any time.', {
+            ? t(payday === 1 ? '{spend} a month to spend, {save} to save. You can change this any time.' : 'payday-split', {
                 spend: money(income * (needsPercent / 100)),
                 save: money(income * ((100 - needsPercent) / 100)),
               })

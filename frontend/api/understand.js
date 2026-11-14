@@ -1,22 +1,25 @@
 /*
- * Vercel serverless function: turns one "what if" sentence into structured changes using Groq.
+ * Vercel serverless function: Spendify's money assistant, backed by Groq.
  *
  * The API key lives only in the Vercel environment variable GROQ_API_KEY, never in the app.
- * The app sends just the sentence and currency code (no expenses, balances or names). The simulation
- * itself still runs on the phone; this only reads the sentence.
+ * The app sends the question, the last few messages, and a summary of her numbers (totals per
+ * category, income, savings, limits, goals). Never individual expenses, notes or her name.
+ * The reply is plain text; `changes` is filled only when she describes a plan or a "what if",
+ * and the simulation of those changes runs on the phone.
  */
 import { CATEGORIES } from '../src/lib/categories.js';
 import { cleanChanges } from '../src/lib/changes.js';
 
 const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
-const MAX_CHARS = 300;
+const MAX_CHARS = 400;
 
 const nullable = (type) => ({ type: [type, 'null'] });
 const SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['changes', 'unclear'],
+  required: ['reply', 'changes', 'unclear', 'suggestions'],
   properties: {
+    reply: { type: 'string' },
     changes: {
       type: 'array',
       items: {
@@ -38,24 +41,39 @@ const SCHEMA = {
       },
     },
     unclear: { type: 'array', items: { type: 'string' } },
+    suggestions: { type: 'array', items: { type: 'string' } },
   },
 };
 
-const instructions = (currency, month) => `You read short "what if" money plans written by a person in Indonesian or English (often casual, with slang like "rb", "jt", "gopek", "ceban", "sejuta") and convert them into changes for a personal budget simulator. Currency: ${currency}. The current month is ${month}.
+const instructions = ({ lang, currency, month, context }) => `You are Spendify's money assistant inside a personal budgeting app. Reply in the language the person writes in (the app is set to ${
+  lang === 'id' ? 'Bahasa Indonesia' : 'English'
+}). In Indonesian, be casual and warm and use "kamu"; in English, friendly and plain. The reply and the suggestions must be in the same language. Currency: ${currency}. Current month: ${month}.
 
-Return only changes the person actually described. Fill fields that don't apply with null. Change types:
-- purchase: one-off spending. amount, name (what it is, in the person's language, capitalised, without the price or timing, e.g. "Liburan ke Jepang", "iPhone 15", "Motor"), at = months from now (0 = this month, 1 = next month; "akhir tahun"/"end of the year" = December, "tahun depan"/"next year" = next January).
-- save: put this much MORE into savings every month (spend less). amount per month.
-- cut: spend less on one category every month. category (one of the allowed values), and either pct (fraction, 0.15 = 15%, 1 = stop completely) or amount per month. A daily habit like "ngopi 25rb tiap hari" stopped completely is pct 1.
-- income: monthly income change. Exactly one of: pct (fraction, negative for a decrease), delta (amount, negative for a decrease), set (the new total income).
-- monthly: a new recurring monthly cost such as an instalment, subscription or rent. amount per month (convert daily costs to monthly by multiplying by 30), name, months (null if ongoing).
-- target: the person asks when their savings will reach an amount. amount.
-- goal: the person wants to save up for something specific ("nabung buat liburan 5 juta", "I want to save 3M for a phone by June", "mau punya dana darurat 10 juta"). amount (total needed), name (what it's for, capitalised), months = months from now until they want it (null if they didn't say). A purchase in the future that the person is planning towards can also be a purchase with at > 0.
+Their money, as a summary (all amounts in whole ${currency}; categories use the app's English keys):
+${JSON.stringify(context)}
 
-Prices: if the person names a specific thing to buy or save for (a phone model, a laptop, a trip to a place, a concert) but gives no price, estimate a typical current price for it in ${currency} (Indonesian market for IDR), round it, and set estimated to true. Questions like "how should I save", "gimana nabungnya", "what's the plan" with a timeframe mean a goal with months. Only put things in "unclear" when they are too vague to price ("something", "stuff") or not about money. For amounts the person gave, set estimated to false.
+How to answer:
+- Answer the actual question. Use their real numbers from the summary; never invent figures, limits or goals that aren't there. If the summary lacks something, say so briefly.
+- Read the field names carefully: spending is not savings. For "more/less than last month", use changeVsLastMonthBySameDay (positive = spending more). Mid-month, compare with last month by the same day, not with all of last month.
+- Be specific and practical: name categories (translate category keys into the reply language), give amounts, compare with last month or their usual month, and suggest 1-3 concrete actions they control.
+- Keep it short: at most about 110 words. Use short paragraphs or "- " bullet lines. You may bold a key number with **...**. No headings, no tables, at most one emoji.
+- Format money like ${currency === 'IDR' ? '"Rp 1.250.000"' : 'the usual local format'}, rounded to a friendly amount (e.g. Rp 917.000, not Rp 916.667).
+- You are not a licensed financial adviser; don't recommend specific investment products.
 
-Amounts are plain numbers in full units: "1,5 jt" = 1500000, "200rb" = 200000, "gopek" = 500, "goceng" = 5000, "ceban" = 10000, "cepek" = 100, "sejuta" = 1000000, "10M" = 10000000.
-If part of the text is too vague to price or is not about money, copy that part into "unclear".`;
+Changes (the "what if" simulator): ONLY when the person describes a plan, decision or hypothetical (buying something, saving for something, cutting a category, an income change, a new monthly cost, asking when savings reach an amount), also return it in "changes" so the app can simulate it. For questions, analysis or advice, return an empty "changes" array. Change types:
+- purchase: one-off spending. amount, name (what it is, capitalised, without price or timing), at = months from now (0 = this month; "akhir tahun" = December; "tahun depan" = next January).
+- save: put this much MORE into savings every month. amount per month.
+- cut: spend less on one category every month. category (allowed values only), and either pct (fraction; 1 = stop completely) or amount per month.
+- income: monthly income change. Exactly one of pct (fraction, negative for a decrease), delta (negative for a decrease), set (new total).
+- monthly: a new recurring monthly cost (instalment, subscription, rent). amount per month (daily cost x 30), name, months (null if ongoing).
+- target: when will savings reach an amount. amount.
+- goal: saving up for something specific. amount (total), name, months until they want it (null if not said).
+For a goal or a future purchase, return just that one change: don't add a separate "save" change for the monthly amount, the app works that out and shows it.
+If they name a specific thing but no price, estimate a typical current price (Indonesian market for IDR), round it, and set estimated to true; otherwise estimated is false. Amounts are full numbers: "1,5 jt" = 1500000, "200rb" = 200000, "gopek" = 500, "goceng" = 5000, "ceban" = 10000, "sejuta" = 1000000. Fill fields that don't apply with null. When you return changes, the reply should briefly say what you set up (the app shows the numbers).
+- "unclear": parts of a plan that are too vague to simulate. Usually empty.
+- "suggestions": 2 or 3 short follow-up things the person might tap next, written as the person would say them, in the reply language, each under 45 characters.`;
+
+const cleanText = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -67,8 +85,15 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === 'string' ? safeJson(req.body) : req.body || {};
   const text = String(body.text || '').trim().slice(0, MAX_CHARS);
-  const currency = /^[A-Z]{3}$/.test(body.currency) ? body.currency : 'IDR';
   if (!text) return res.status(400).json({ error: 'empty' });
+  const currency = /^[A-Z]{3}$/.test(body.currency) ? body.currency : 'IDR';
+  const lang = body.lang === 'en' ? 'en' : 'id';
+  const context = body.context && typeof body.context === 'object' && JSON.stringify(body.context).length <= 8000 ? body.context : {};
+  // A few earlier turns, so follow-ups like "and coffee?" make sense
+  const history = (Array.isArray(body.history) ? body.history : [])
+    .slice(-6)
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string')
+    .map((m) => ({ role: m.role, content: m.text.slice(0, 600) }));
   const month = new Date().toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
   try {
@@ -77,22 +102,23 @@ export default async function handler(req, res) {
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: MODEL,
-        temperature: 0,
-        messages: [
-          { role: 'system', content: instructions(currency, month) },
-          { role: 'user', content: text },
-        ],
-        response_format: { type: 'json_schema', json_schema: { name: 'changes', strict: true, schema: SCHEMA } },
+        temperature: 0.3,
+        max_completion_tokens: 1500,
+        reasoning_effort: 'medium',
+        messages: [{ role: 'system', content: instructions({ lang, currency, month, context }) }, ...history, { role: 'user', content: text }],
+        response_format: { type: 'json_schema', json_schema: { name: 'assistant_reply', strict: true, schema: SCHEMA } },
       }),
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(15000),
     });
     if (!r.ok) return res.status(502).json({ error: 'upstream', status: r.status });
     const data = await r.json();
     const out = safeJson(data?.choices?.[0]?.message?.content || '{}') || {};
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({
+      reply: cleanText(out.reply, 1500),
       changes: cleanChanges(out.changes),
       unclear: Array.isArray(out.unclear) ? out.unclear.filter((u) => typeof u === 'string').slice(0, 5).map((u) => u.slice(0, 120)) : [],
+      suggestions: Array.isArray(out.suggestions) ? out.suggestions.map((s) => cleanText(s, 60)).filter(Boolean).slice(0, 3) : [],
     });
   } catch {
     return res.status(502).json({ error: 'failed' });

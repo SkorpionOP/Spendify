@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { addMonths, currentMonth, monthLabel } from '../lib/dates';
+import { addMonths, currentMonth, cycleRange, monthLabel } from '../lib/dates';
 import { t } from '../lib/i18n';
 
 export function MonthSwitcher({ value, onChange }) {
@@ -11,6 +11,7 @@ export function MonthSwitcher({ value, onChange }) {
       </button>
       <span className="month-switch__label" aria-live="polite">
         {monthLabel(value)}
+        {cycleRange(value) && <span className="month-switch__range">{cycleRange(value)}</span>}
       </span>
       <button className="icon-btn" onClick={() => onChange(addMonths(value, 1))} disabled={isCurrent} aria-label={t('Next month')}>
         <ChevronRight size={20} />

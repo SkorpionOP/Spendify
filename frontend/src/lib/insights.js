@@ -1,4 +1,4 @@
-import { addMonths, daysInMonth, monthKey, toISODate } from './dates';
+import { addMonths, cycleDate, cycleEnd, dayOfCycle, daysInMonth, monthKey, toISODate } from './dates';
 import { monthSummary } from './money';
 
 /*
@@ -11,11 +11,11 @@ const sum = (list) => list.reduce((s, e) => s + e.amount, 0);
 /** Running total per day: [{ day, date, spent, total }] for days 1..upTo. */
 const running = (list, key, upTo) => {
   const perDay = new Array(daysInMonth(key)).fill(0);
-  for (const e of list) perDay[Number(e.date.slice(8)) - 1] += e.amount;
+  for (const e of list) perDay[dayOfCycle(e.date) - 1] += e.amount;
   let run = 0;
   return perDay.slice(0, upTo).map((spent, i) => {
     run += spent;
-    return { day: i + 1, date: `${key}-${String(i + 1).padStart(2, '0')}`, spent, total: run };
+    return { day: i + 1, date: cycleDate(key, i + 1), spent, total: run };
   });
 };
 
@@ -24,7 +24,7 @@ export const monthInsights = (state, key, now = new Date()) => {
   const thisKey = monthKey(todayIso);
   const days = daysInMonth(key);
   // How many days of this month have happened
-  const elapsed = key < thisKey ? days : key > thisKey ? 0 : now.getDate();
+  const elapsed = key < thisKey ? days : key > thisKey ? 0 : dayOfCycle(todayIso);
   const isCurrent = key === thisKey;
 
   const list = state.expenses.filter((e) => monthKey(e.date) === key);
@@ -78,7 +78,7 @@ export const monthInsights = (state, key, now = new Date()) => {
     .slice(0, 3);
 
   // Weekday pattern over the 8 weeks ending at the last day shown, leaving out monthly repeats
-  const endIso = isCurrent ? todayIso : `${key}-${String(days).padStart(2, '0')}`;
+  const endIso = isCurrent ? todayIso : cycleEnd(key);
   const end = new Date(Number(endIso.slice(0, 4)), Number(endIso.slice(5, 7)) - 1, Number(endIso.slice(8)));
   const start = new Date(end);
   start.setDate(start.getDate() - 55);

@@ -1,4 +1,4 @@
-import { currentMonth, daysInMonth, monthKey, today } from './dates';
+import { currentMonth, dayOfCycle, daysInMonth, monthKey, today } from './dates';
 import { monthSummary } from './money';
 
 /**
@@ -12,7 +12,7 @@ import { monthSummary } from './money';
 export const monthPicture = (state) => {
   const key = currentMonth();
   const s = monthSummary(state, key);
-  const dayOfMonth = new Date().getDate();
+  const dayOfMonth = dayOfCycle(today());
   const totalDays = daysInMonth(key);
   const daysLeft = totalDays - dayOfMonth + 1; // including today
 

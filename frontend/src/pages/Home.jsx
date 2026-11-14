@@ -6,7 +6,7 @@ import { limitStatus } from '../lib/money';
 import { monthRecap, weekRecap } from '../lib/recap';
 import { useBackClose } from '../lib/backclose';
 import { monthPicture } from '../lib/budget';
-import { currentMonth, greeting, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
+import { currentMonth, greeting, isPayCycle, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
 import { LangSwitch } from '../components/LangSwitch';
@@ -232,7 +232,10 @@ export default function Home() {
             </div>
             <p className="hero__scale">
               {t('Spent {spent} of {budget}', { spent: money(p.spent), budget: money(p.budget) })}.{' '}
-              {tn(p.daysLeft, '{n} day left in {month}', '{n} days left in {month}', { month: monthName })}.
+              {isPayCycle()
+                ? tn(p.daysLeft, '{n} day until payday', '{n} days until payday')
+                : tn(p.daysLeft, '{n} day left in {month}', '{n} days left in {month}', { month: monthName })}
+              .
             </p>
             {p.status !== 'ok' && <p className="hero__note">{statusLine}</p>}
 

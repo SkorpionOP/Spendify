@@ -122,6 +122,24 @@ export const amountToInput = (n) => {
   return formatAmountInput(s);
 };
 
+/**
+ * Rupiah amounts read out the way people say them, so a row of zeros is easy to check:
+ * 5500000 -> "5,5 juta rupiah" ("5.5 million rupiah" in English). Null for other currencies or small amounts.
+ */
+export const amountInWords = (n) => {
+  const v = Math.abs(Number(n) || 0);
+  if (getConfig().currency !== 'IDR' || v < 1000) return null;
+  const id = getConfig().lang === 'id';
+  const units = id
+    ? [[1e12, 'triliun'], [1e9, 'miliar'], [1e6, 'juta'], [1e3, 'ribu']]
+    : [[1e12, 'trillion'], [1e9, 'billion'], [1e6, 'million'], [1e3, 'thousand']];
+  const [size, word] = units.find(([u]) => v >= u);
+  const x = Math.round((v / size) * 1000) / 1000;
+  const exact = x * size === v;
+  const num = x.toLocaleString(id ? 'id-ID' : 'en-GB', { maximumFractionDigits: 3 });
+  return `${exact ? '' : '≈ '}${num} ${word} rupiah`;
+};
+
 /** Tiny label for charts: "22rb", "1,5jt" in Indonesian, "22k", "1.5M" in English. No currency symbol. */
 export const tinyAmount = (n) => {
   const v = Math.abs(Number(n) || 0);

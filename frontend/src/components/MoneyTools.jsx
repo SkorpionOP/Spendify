@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { PiggyBank, Plus, Trash2, Wallet } from 'lucide-react';
 import { monthSummary, useStore } from '../lib/store';
-import { addMonths, currentMonth, daysInMonth, monthLabel, shortDate } from '../lib/dates';
+import { addMonths, currentMonth, dateInCycle, monthKey, monthLabel, shortDate, today } from '../lib/dates';
 import { currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
 import { CATEGORIES, category as catMeta } from '../lib/categories';
 import { catName, getConfig, ordinal, t } from '../lib/i18n';
@@ -72,7 +72,7 @@ export const nextRun = (r) => {
   while (skipped.has(m)) {
     m = addMonths(m, 1);
   }
-  return `${m}-${String(Math.min(r.day, daysInMonth(m))).padStart(2, '0')}`;
+  return dateInCycle(m, r.day);
 };
 
 export const upcomingRepeats = (recurring) =>
@@ -129,7 +129,7 @@ export function RepeatsPanel({ startAdding = false }) {
             const name = r.note || catName(r.category);
             const isMandatory = r.mandatory !== false;
             const isSkippedThisMonth = (r.skippedMonths || []).includes(curMonth);
-            const isLoggedThisMonth = expenses.some((e) => e.recurringId === r.id && e.date.slice(0, 7) === curMonth);
+            const isLoggedThisMonth = expenses.some((e) => e.recurringId === r.id && monthKey(e.date) === curMonth);
             return (
               <li key={r.id} className={`rec ${isSkippedThisMonth ? 'is-skipped' : ''}`}>
                 <span className="tx__icon tx__icon--sm" style={{ '--cat': m.color }} aria-hidden="true">
@@ -242,7 +242,7 @@ export function RepeatsPanel({ startAdding = false }) {
           <p className="muted small">
             {Number(day) === dayNow
               ? t('Today is the day, so the first one is added right away.')
-              : Number(day) < dayNow
+              : dateInCycle(curMonth, Number(day)) < today()
                 ? t('This month’s date has passed. The first one is added in {month}.', {
                     month: monthLabel(addMonths(currentMonth(), 1), { month: 'long' }),
                   })

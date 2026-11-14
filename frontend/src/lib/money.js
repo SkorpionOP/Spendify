@@ -1,5 +1,5 @@
-import { addMonths, currentMonth, daysInMonth, monthKey } from './dates';
-import { defaultLang } from './i18n';
+import { addMonths, currentMonth, dateInCycle, monthKey, today } from './dates';
+import { clampPayday, defaultLang } from './i18n';
 
 /*
  * Pure state + money maths. No React here, so it can be unit tested.
@@ -23,6 +23,7 @@ export const empty = () => ({
     notifyRecurring: false,
     trackPayment: false,
     aiHelp: true,
+    payday: 1, // day of the month the salary arrives; budget months run from it
   },
   startMonth: currentMonth(),
   savedAt: 0,
@@ -61,6 +62,7 @@ export const normalize = (raw) => {
   s.scenarios = Array.isArray(s.scenarios) ? s.scenarios.filter((x) => x && x.id && typeof x.text === 'string') : [];
   s.settings = { ...base.settings, ...(s.settings || {}) };
   s.settings.aiHelp = s.settings.aiHelp !== false;
+  s.settings.payday = clampPayday(s.settings.payday);
   s.settings.trackPayment = !!s.settings.trackPayment;
   s.settings.hideAmounts = !!s.settings.hideAmounts;
   s.settings.notifyRecurring = !!s.settings.notifyRecurring;
@@ -117,22 +119,22 @@ export const monthSummary = (state, key) => {
 export const applyRecurring = (state, onAdded = null) => {
   if (!state.recurring?.length) return state;
   const now = currentMonth();
-  const dayNow = new Date().getDate();
+  const todayIso = today();
   const added = [];
   const recurring = state.recurring.map((r) => {
     let m = r.lastRun ? addMonths(r.lastRun, 1) : r.since;
     let lastRun = r.lastRun;
     const skipped = new Set(r.skippedMonths || []);
     for (let i = 0; i < 120 && m <= now; i++, m = addMonths(m, 1)) {
-      const day = Math.min(r.day, daysInMonth(m));
-      if (m === now && day > dayNow) break;
+      const date = dateInCycle(m, r.day);
+      if (m === now && date > todayIso) break;
       if (!skipped.has(m)) {
         added.push({
           id: uid(),
           amount: r.amount,
           category: r.category,
           note: r.note,
-          date: `${m}-${String(day).padStart(2, '0')}`,
+          date,
           createdAt: Date.now() + i,
           recurringId: r.id,
         });

@@ -40,11 +40,15 @@ describe('/api/understand', () => {
         { type: 'hack', amount: 1 },
       ],
       unclear: ['aku mau nikah'],
+      reply: 'Oke!',
+      suggestions: ['Lagi?'],
     });
     vi.stubGlobal('fetch', fetch);
     const r = await call({ text: 'mau ke jepang 20jt, stop ngopi, aku mau nikah', currency: 'IDR' });
     expect(r.code).toBe(200);
     expect(r.body).toEqual({
+      reply: 'Oke!',
+      suggestions: ['Lagi?'],
       changes: [
         { type: 'purchase', amount: 20000000, name: 'Ke Jepang', at: 1 },
         { type: 'cut', category: 'Coffee', pct: 1 },
@@ -55,7 +59,7 @@ describe('/api/understand', () => {
     expect(url).not.toContain('test-key');
     expect(init.headers.authorization).toBe('Bearer test-key');
     const sent = JSON.parse(init.body);
-    expect(sent.messages[1]).toEqual({ role: 'user', content: 'mau ke jepang 20jt, stop ngopi, aku mau nikah' });
+    expect(sent.messages.at(-1)).toEqual({ role: 'user', content: 'mau ke jepang 20jt, stop ngopi, aku mau nikah' });
     expect(sent.response_format.json_schema.strict).toBe(true);
   });
 
@@ -74,7 +78,7 @@ describe('/api/understand', () => {
     const fetch = aiSays({ changes: [], unclear: [] });
     vi.stubGlobal('fetch', fetch);
     await call({ text: 'a'.repeat(1000) });
-    expect(JSON.parse(fetch.mock.calls[0][1].body).messages[1].content).toHaveLength(300);
+    expect(JSON.parse(fetch.mock.calls[0][1].body).messages.at(-1).content).toHaveLength(400);
   });
 });
 

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Check, Plus, RefreshCw } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { currentMonth, dayLabel, daysInMonth, monthKey, monthLabel, parseISO, today } from '../lib/dates';
+import { currentMonth, cycleDate, cycleStart, dateInCycle, dayLabel, daysInMonth, monthKey, monthLabel, parseISO, today } from '../lib/dates';
 import { calCompact, money } from '../lib/format';
-import { catName, t, tn } from '../lib/i18n';
+import { catName, getConfig, t, tn } from '../lib/i18n';
 import { category } from '../lib/categories';
 import { MonthSwitcher } from '../components/MonthSwitcher';
 import { ExpenseRow } from '../components/ExpenseList';
@@ -28,17 +28,21 @@ export default function CalendarPage() {
   const max = Math.max(1, ...Object.values(totals));
   const monthTotal = Object.values(totals).reduce((a, b) => a + b, 0);
 
-  const firstWeekday = (parseISO(`${month}-01`).getDay() + 6) % 7; // Monday = 0
+  // The grid runs from payday to the day before the next one (a plain calendar month when payday is the 1st).
+  const firstWeekday = (parseISO(cycleStart(month)).getDay() + 6) % 7; // Monday = 0
   const n = daysInMonth(month);
-  const cells = [...Array(firstWeekday).fill(null), ...Array.from({ length: n }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`)];
+  const cells = [...Array(firstWeekday).fill(null), ...Array.from({ length: n }, (_, i) => cycleDate(month, i + 1))];
+  const firstCell = cells[firstWeekday];
+  // Show the month name on the first day and wherever a new calendar month starts.
+  const numLabel = (d) =>
+    d === firstCell || d.endsWith('-01') ? parseISO(d).toLocaleDateString(getConfig().locale, { day: 'numeric', month: 'short' }) : Number(d.slice(8));
 
   const repeatsByDay = useMemo(() => {
     const map = {};
     for (const r of state.recurring || []) {
       if ((r.skippedMonths || []).includes(month)) continue;
       if (r.since && r.since > month) continue;
-      const dueDay = Math.min(r.day, daysInMonth(month));
-      const dateStr = `${month}-${String(dueDay).padStart(2, '0')}`;
+      const dateStr = dateInCycle(month, r.day);
       const isLogged = expenses.some((e) => e.recurringId === r.id && monthKey(e.date) === month);
       (map[dateStr] ||= []).push({ ...r, isLogged });
     }
@@ -55,7 +59,7 @@ export default function CalendarPage() {
 
   const changeMonth = (m) => {
     setMonth(m);
-    setSelected(m === currentMonth() ? today() : `${m}-01`);
+    setSelected(m === currentMonth() ? today() : cycleStart(m));
   };
 
   const dayList = byDay[selected] || [];
@@ -110,7 +114,7 @@ export default function CalendarPage() {
                 aria-pressed={isSelected}
                 aria-label={`${dayLabel(d)}, ${totals[d] ? money(totals[d]) : t('nothing spent')}${dayRepeats.length ? `, ${dayRepeats.length} ${t('repeats')}` : ''}`}
               >
-                <span className="cal__num">{Number(d.slice(8))}</span>
+                <span className={`cal__num ${typeof numLabel(d) === 'string' ? 'cal__num--month' : ''}`}>{numLabel(d)}</span>
                 {totals[d] ? (
                   <span className="cal__amt">{calCompact(totals[d])}</span>
                 ) : hasPendingRepeats ? (

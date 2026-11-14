@@ -1,4 +1,4 @@
-import { addMonths, daysInMonth, monthKey, toISODate } from './dates';
+import { addMonths, dayOfCycle, daysInMonth, monthKey, toISODate } from './dates';
 import { goalProgress, monthSummary, planFor } from './money';
 
 /*
@@ -35,7 +35,7 @@ export const baseline = (state, now = new Date()) => {
   const months = Object.keys(perMonth).length;
 
   // This month so far, and a simple forecast for the rest of it
-  const day = now.getDate();
+  const day = dayOfCycle(toISODate(now));
   const days = daysInMonth(key);
   const spentNow = summary?.spent || 0;
   const thisCat = {};

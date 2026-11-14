@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { Bell, BellOff, ChevronLeft, Download, Eye, EyeOff, History as HistoryIcon, Share, ShieldCheck, ShieldAlert, Sparkles, Upload, Wallet } from 'lucide-react';
 import { isNotificationSupported, requestNotificationPermission } from '../lib/notifications';
 import { planFor, useStore } from '../lib/store';
-import { currentMonth, dateTime } from '../lib/dates';
+import { currentMonth, dateTime, periodPreview } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, parseAmountInput } from '../lib/format';
-import { CURRENCIES, LANGS, t, tn } from '../lib/i18n';
+import { CURRENCIES, LANGS, ordinal, t, tn } from '../lib/i18n';
 import { canShareFiles, downloadBackup, shareBackup } from '../lib/backup';
 import { isPersisted, listSnapshots, requestPersistence } from '../lib/persist';
 import { useInstall } from '../lib/install';
 import { SplitSlider } from '../components/SplitSlider';
+import { PaydayPicker } from '../components/PaydayPicker';
 import { RepeatsPanel, TopupPanel } from '../components/MoneyTools';
 import { InstallHelp } from '../components/Nudges';
 import { LimitsPanel } from '../components/Limits';
@@ -220,6 +221,15 @@ export default function Settings() {
             <input inputMode="numeric" value={salary} onChange={(e) => setSalary(formatAmountInput(e.target.value))} />
           </div>
         </label>
+        <PaydayPicker
+          value={state.settings.payday}
+          onChange={(d) => {
+            if (d === state.settings.payday) return;
+            updateSettings({ payday: d });
+            toast(d === 1 ? t('Budget months now follow the calendar') : t('payday-saved', { ord: ordinal(d), period: periodPreview(d) }));
+          }}
+          id="settings-payday"
+        />
         <SplitSlider value={needsPercent} onChange={setNeedsPercent} income={income} />
         <button className="btn btn--primary btn--block" type="submit" disabled={!planChanged}>
           {t('Save plan')}

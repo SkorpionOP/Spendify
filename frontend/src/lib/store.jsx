@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together on purpose */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { addMonths, currentMonth, today } from './dates';
+import { addMonths, currentMonth, dateInCycle, monthKey, today } from './dates';
 import { applyRecurring, empty, normalize, planFor, uid } from './money';
 import {
   getSnapshot,
@@ -137,13 +137,19 @@ export function StoreProvider({ children }) {
   /* ----- actions ----- */
 
   const setup = useCallback(
-    ({ name, salary, needsPercent }) =>
-      setState((s) => ({
-        ...s,
-        profile: { name: name.trim() },
-        startMonth: s.profile ? s.startMonth : currentMonth(),
-        plans: { ...s.plans, [currentMonth()]: { salary, needsPercent } },
-      })),
+    ({ name, salary, needsPercent, payday }) =>
+      setState((s) => {
+        // The payday decides which budget month "now" is, so apply it before working out keys.
+        const settings = payday ? { ...s.settings, payday } : s.settings;
+        configure(settings);
+        return {
+          ...s,
+          settings,
+          profile: { name: name.trim() },
+          startMonth: s.profile ? s.startMonth : currentMonth(),
+          plans: { ...s.plans, [currentMonth()]: { salary, needsPercent } },
+        };
+      }),
     [setState]
   );
 
@@ -216,8 +222,7 @@ export function StoreProvider({ children }) {
     ({ amount, category, note, day, mandatory = true, since: sinceIn }) => {
       const d = Math.min(31, Math.max(1, Number(day) || 1));
       const now = currentMonth();
-      const thisDay = new Date().getDate();
-      const since = sinceIn || (d < thisDay ? addMonths(now, 1) : now);
+      const since = sinceIn || (dateInCycle(now, d) < today() ? addMonths(now, 1) : now);
       const rule = {
         id: uid(),
         amount: Number(amount),
@@ -249,19 +254,19 @@ export function StoreProvider({ children }) {
   );
 
   const toggleSkipRecurring = useCallback(
-    (id, monthKey = currentMonth()) =>
+    (id, month = currentMonth()) =>
       setState((s) => {
         const target = s.recurring.find((r) => r.id === id);
         if (!target) return s;
         const skipped = new Set(target.skippedMonths || []);
-        const willSkip = !skipped.has(monthKey);
-        if (willSkip) skipped.add(monthKey);
-        else skipped.delete(monthKey);
+        const willSkip = !skipped.has(month);
+        if (willSkip) skipped.add(month);
+        else skipped.delete(month);
 
         const newRecurring = s.recurring.map((r) => (r.id === id ? { ...r, skippedMonths: [...skipped] } : r));
         let newExpenses = s.expenses;
         if (willSkip) {
-          newExpenses = s.expenses.filter((e) => !(e.recurringId === id && e.date.slice(0, 7) === monthKey));
+          newExpenses = s.expenses.filter((e) => !(e.recurringId === id && monthKey(e.date) === month));
         }
 
         const nextState = { ...s, recurring: newRecurring, expenses: newExpenses };

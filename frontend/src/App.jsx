@@ -1,91 +1,44 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './hooks/useAuth';
-import { ToastProvider } from './hooks/useToast';
-import { LayoutProvider, Layout } from './components/Layout';
-import { DateRangeProvider } from './hooks/useDateRange';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
-import Calendar from './pages/Calendar';
-import Analysis from './pages/Analysis';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { StoreProvider, useStore } from './lib/store';
+import { ToastProvider } from './components/Toasts';
+import { ExpenseSheetProvider } from './components/ExpenseSheet';
+import { AppShell } from './components/AppShell';
+import Onboarding from './pages/Onboarding';
+import Home from './pages/Home';
+import CalendarPage from './pages/CalendarPage';
+import Insights from './pages/Insights';
 import History from './pages/History';
-import Setup from './pages/Setup';
-import EditExpense from './pages/EditExpense';
+import Settings from './pages/Settings';
 
-// Private Route Guard
-const PrivateRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+function Routed() {
+  const { state } = useStore();
 
-  if (loading) {
-    return <div className="text-center" style={{ marginTop: '5rem' }}>Verifying credentials...</div>;
-  }
+  if (!state.profile) return <Onboarding />;
 
-  return user ? children : <Navigate to="/login" replace />;
-};
-
-function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      
-      {/* Protected Routes */}
-      <Route path="/dashboard" element={
-        <PrivateRoute>
-          <Dashboard />
-        </PrivateRoute>
-      } />
-      <Route path="/setup" element={
-        <PrivateRoute>
-          <Setup />
-        </PrivateRoute>
-      } />
-      <Route path="/calendar" element={
-        <PrivateRoute>
-          <Calendar />
-        </PrivateRoute>
-      } />
-      <Route path="/analysis" element={
-        <PrivateRoute>
-          <Analysis />
-        </PrivateRoute>
-      } />
-      <Route path="/history" element={
-        <PrivateRoute>
-          <History />
-        </PrivateRoute>
-      } />
-      <Route path="/edit/:id" element={
-        <PrivateRoute>
-          <EditExpense />
-        </PrivateRoute>
-      } />
-
-      {/* Fallback route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <ExpenseSheetProvider>
+      <AppShell>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/insights" element={<Insights />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AppShell>
+    </ExpenseSheetProvider>
   );
 }
 
-function App() {
+export default function App() {
   return (
-    <Router>
-      <AuthProvider>
+    <BrowserRouter>
+      <StoreProvider>
         <ToastProvider>
-          <DateRangeProvider>
-            <LayoutProvider>
-              <Layout>
-                <AppRoutes />
-              </Layout>
-            </LayoutProvider>
-          </DateRangeProvider>
+          <Routed />
         </ToastProvider>
-      </AuthProvider>
-    </Router>
+      </StoreProvider>
+    </BrowserRouter>
   );
 }
-
-export default App;

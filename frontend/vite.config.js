@@ -7,13 +7,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['icon.svg', 'icon-192x192.png'],
       manifest: {
-        name: 'Spendly Expense Tracker',
-        short_name: 'Spendly',
-        description: 'Offline-first personal finance tracker',
-        theme_color: '#0a0a0f',
-        background_color: '#0a0a0f',
+        name: 'Spendify',
+        short_name: 'Spendify',
+        description: 'A private money diary. Your data stays on your phone.',
+        start_url: '/',
+        scope: '/',
+        theme_color: '#f4f1fa',
+        background_color: '#f4f1fa',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
@@ -34,6 +36,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         cleanupOutdatedCaches: true,
+        navigateFallback: '/index.html',
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -66,15 +69,6 @@ export default defineConfig({
         ]
       }
     })
-  ],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-        secure: false,
-      }
-    }
-  }
+  ]
 })
 

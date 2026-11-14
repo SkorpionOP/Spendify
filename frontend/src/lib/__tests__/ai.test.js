@@ -96,3 +96,13 @@ describe('cleanChanges', () => {
     ]);
   });
 });
+
+describe('estimated prices', () => {
+  it('keeps the estimated flag only when the AI says so', () => {
+    expect(cleanChanges([{ type: 'goal', amount: 5e6, name: 'iQOO', months: 6, estimated: true }, { type: 'purchase', amount: 1e6, name: 'Tas', at: 0, estimated: false }])).toEqual([
+      { type: 'goal', amount: 5e6, name: 'iQOO', months: 6, estimated: true },
+      { type: 'purchase', amount: 1e6, name: 'Tas', at: 0 },
+    ]);
+  });
+});
+

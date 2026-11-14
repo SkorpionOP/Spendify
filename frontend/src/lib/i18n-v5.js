@@ -276,4 +276,11 @@ export const V5 = [
   ['See on Home', 'See on Home', 'Lihat di Beranda'],
   ['By {month}: {amount} a month', 'By {month}: {amount} a month', 'Sampai {month}: {amount} per bulan'],
   ['Target month {month} has passed', 'Target month {month} has passed', 'Bulan target {month} sudah lewat'],
+  // Missing prices
+  ['How much is {name}?', 'How much is {name}?', 'Berapa harga {name}?'],
+  ['How much is it?', 'How much is it?', 'Berapa harganya?'],
+  ['AI estimated the price at about {amount}.', 'AI estimated the price at about {amount}.', 'Harga diperkirakan AI sekitar {amount}.'],
+  ['Change price', 'Change price', 'Ubah harga'],
+  ['Price', 'Price', 'Harga'],
+  ['Save price', 'Save', 'Simpan'],
 ];

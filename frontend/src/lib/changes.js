@@ -31,7 +31,7 @@ export const cleanChange = (c) => {
     case 'purchase': {
       const amount = money(c.amount);
       const at = Math.min(12, Math.max(0, Math.round(Number(c.at) || 0)));
-      return amount ? { type: 'purchase', amount, name: text(c.name), at } : null;
+      return amount ? { type: 'purchase', amount, name: text(c.name), at, ...(c.estimated === true ? { estimated: true } : {}) } : null;
     }
     case 'save': {
       const amount = money(c.amount);
@@ -63,7 +63,7 @@ export const cleanChange = (c) => {
     }
     case 'goal': {
       const amount = money(c.amount);
-      return amount ? { type: 'goal', amount, name: text(c.name), months: months(c.months) } : null;
+      return amount ? { type: 'goal', amount, name: text(c.name), months: months(c.months), ...(c.estimated === true ? { estimated: true } : {}) } : null;
     }
     default:
       return null;

@@ -123,3 +123,20 @@ describe('saving up for something', () => {
     expect(g('nabung 200rb tiap bulan')).toEqual([{ type: 'save', amount: 200_000 }]);
   });
 });
+
+describe('missing prices', () => {
+  const NOV = new Date(2026, 10, 16);
+  it('asks for the price of the thing she named, with a clean name', () => {
+    expect(understand('Wanna buy iqoo in 6 months how should I save', NOV)).toEqual({
+      changes: [],
+      unclear: [{ text: 'Wanna buy iqoo in 6 months how should I save', hint: 'Iqoo' }],
+    });
+    expect(understand('mau beli iqoo 6 bulan lagi gimana nabungnya', NOV).unclear[0].hint).toBe('Iqoo');
+  });
+  it('plans once the price is added', () => {
+    expect(understand('Wanna buy iqoo in 6 months how should I save 4000000', NOV).changes).toEqual([
+      { type: 'purchase', amount: 4_000_000, name: 'Iqoo', at: 6 },
+    ]);
+  });
+});
+

@@ -7,7 +7,7 @@ import { clauses, understand } from '../lib/nlu';
 import { askAI } from '../lib/ai';
 import { cleanChange } from '../lib/changes';
 import { addMonths, monthLabel } from '../lib/dates';
-import { compact, money, roundUpNice } from '../lib/format';
+import { amountToInput, compact, currencySymbol, formatAmountInput, money, parseAmountInput, roundUpNice } from '../lib/format';
 import { catName, getConfig, t, tn } from '../lib/i18n';
 import { useToast } from '../components/Toasts';
 
@@ -101,6 +101,7 @@ export default function Twin() {
       } else if (!ai) usedFallback = true;
     }
     if (!found) {
+      // The basic reader; when a price is missing it says what for, so we can ask for it right here
       const local = readLocally(v);
       found = local.found;
       left = local.missed;
@@ -112,6 +113,13 @@ export default function Twin() {
   };
 
   const removeChange = (i) => setItems((cur) => cur.filter((_, j) => j !== i));
+  const setAmount = (i, amount) =>
+    setItems((cur) => cur.map((x, j) => (j === i ? { ...x, change: { ...x.change, amount, estimated: false } } : x)));
+  // Price given for something the reader asked about: read the sentence again with the price added
+  const answerPrice = (u, price) => {
+    setUnclear((cur) => cur.filter((x) => x !== u));
+    run(`${u.text} ${price}`);
+  };
   const reset = () => {
     setItems([]);
     setUnclear([]);
@@ -268,17 +276,19 @@ export default function Twin() {
                 ))}
               </ul>
               {fellBack && <p className="twin__fallback">{t('ai-fallback')}</p>}
-              {unclear.map((u, i) => (
-                <p key={i} className="unclear">
-                  {u.hint != null
-                    ? t('How much is {name}? Try adding the price, like “{name} 3 juta”.', { name: u.hint || t('it') })
-                    : t('I didn’t understand “{text}”. Try one of the examples.', { text: u.text })}
-                </p>
-              ))}
+              {unclear.map((u, i) =>
+                u.hint != null ? (
+                  <PriceAsk key={i} name={u.hint} onAnswer={(price) => answerPrice(u, price)} />
+                ) : (
+                  <p key={i} className="unclear">
+                    {t('I didn’t understand “{text}”. Try one of the examples.', { text: u.text })}
+                  </p>
+                )
+              )}
             </section>
           )}
 
-          {result && <Results r={result} onSave={save} />}
+          {result && <Results r={result} onSave={save} onAmount={setAmount} />}
 
           <p className="twin__foot">{t('This is only a simulation. Your real expenses and savings are never changed.')}</p>
         </>
@@ -287,7 +297,35 @@ export default function Twin() {
   );
 }
 
-function Results({ r, onSave }) {
+/** "How much is the iQOO?" with a price box, instead of making her retype the sentence. */
+function PriceAsk({ name, onAnswer }) {
+  const [price, setPrice] = useState('');
+  const value = parseAmountInput(price);
+  return (
+    <form
+      className="price-ask"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (value > 0) onAnswer(String(value));
+      }}
+    >
+      <label className="price-ask__q" htmlFor="price-ask">
+        {name ? t('How much is {name}?', { name }) : t('How much is it?')}
+      </label>
+      <div className="price-ask__row">
+        <div className="input-prefix">
+          <span aria-hidden="true">{currencySymbol()}</span>
+          <input id="price-ask" inputMode="numeric" value={price} onChange={(e) => setPrice(formatAmountInput(e.target.value))} placeholder="3.000.000" autoFocus />
+        </div>
+        <button type="submit" className="btn btn--primary" disabled={!(value > 0)}>
+          {t('Next')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Results({ r, onSave, onAmount }) {
   const label = (k) => (k == null ? t('not within a year') : k === 0 ? t('this month') : monthLabel(addMonths(r.base.key, k), { month: 'short', year: 'numeric' }));
   const shift = (before, after) => {
     if (before === after) return null;
@@ -337,8 +375,8 @@ function Results({ r, onSave }) {
 
   return (
     <>
-      {r.plans.map((plan, i) => (
-        <PlanCard key={`${plan.name}-${plan.amount}-${i}`} plan={plan} />
+      {r.plans.map((plan) => (
+        <PlanCard key={`${plan.index}-${plan.name}`} plan={plan} onAmount={(v) => onAmount(plan.index, v)} />
       ))}
       {onlyPlans ? null : (
         <>
@@ -410,10 +448,12 @@ function Results({ r, onSave }) {
 }
 
 /** A savings plan, and the question: add it as a savings goal? */
-function PlanCard({ plan }) {
+function PlanCard({ plan, onAmount }) {
   const { state, addGoal } = useStore();
   const toast = useToast();
   const [pace, setPace] = useState('main'); // or 'easier'
+  const [editing, setEditing] = useState(false);
+  const [price, setPrice] = useState(() => amountToInput(plan.amount));
   const chosen = pace === 'easier' && plan.easier ? { ...plan, ...plan.easier, level: 'easy' } : plan;
   const name = plan.name || t('My goal');
   const added = state.goals.some((g) => g.name === name && g.target === plan.amount);
@@ -454,6 +494,35 @@ function PlanCard({ plan }) {
         </span>
         <h2 className="plan__title">{t('Plan: {name}', { name })}</h2>
       </div>
+      {plan.estimated && !editing && (
+        <p className="plan__estimate">
+          {t('AI estimated the price at about {amount}.', { amount: money(plan.amount) })}{' '}
+          <button type="button" className="link-btn" onClick={() => setEditing(true)}>
+            {t('Change price')}
+          </button>
+        </p>
+      )}
+      {editing && (
+        <form
+          className="price-ask__row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const v = parseAmountInput(price);
+            if (v > 0) {
+              onAmount(v);
+              setEditing(false);
+            }
+          }}
+        >
+          <div className="input-prefix">
+            <span aria-hidden="true">{currencySymbol()}</span>
+            <input inputMode="numeric" value={price} onChange={(e) => setPrice(formatAmountInput(e.target.value))} aria-label={t('Price')} autoFocus />
+          </div>
+          <button type="submit" className="btn btn--primary">
+            {t('Save price')}
+          </button>
+        </form>
+      )}
       {lines.map((l, i) => (
         <p key={i} className={`plan__line private-num ${i === lines.length - 1 && chosen.level !== 'covered' ? 'plan__verdict' : ''}`}>
           {l}

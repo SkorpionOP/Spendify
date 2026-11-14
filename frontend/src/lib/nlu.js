@@ -121,6 +121,8 @@ const tidyName = (s) => {
     .replace(/\b(rp\.?|rs\.?|idr)\b/gi, '')
     .replace(/[\d.,]+\s*(miliar|juta|jt|ribu|rb|k|million|thousand|m)?\b/gi, '')
     .replace(/\b(yang|seharga|harganya|harga|senilai|for|worth|about|sekitar|kira-kira|a|an|the|my|aku|saya|mau|ingin|pengen|pingin|i|want|to|dong|ya|sih|deh|bulan depan|next month|tiap bulan|per bulan|sebulan|monthly|a month)\b/gi, ' ')
+    // Question words around the thing she wants: "how should I save", "gimana nabungnya"…
+    .replace(/\b(wanna|gonna|want to|how|should|could|would|can|do|does|much|need|needed|gimana|bagaimana|caranya|nabungnya|harus|perlu|berapa|kapan|bisa|apa|save|saving|nabung|menabung|in|di|dalam|months?|bulan|lagi|untuk|buat|plan|rencana)\b/gi, ' ')
     .replace(/[?!.]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -234,8 +236,10 @@ export const parseClause = (raw, now = new Date()) => {
   }
 
   // "Bisa beli HP baru?" without a price
-  if (RE.buy.test(text)) {
-    const name = tidyName(text.replace(RE.buy, ' ').replace(/\b(kalau|kalo|what if|if|can i|bisa|apa|aku|i|nggak|gak|ga|enggak)\b/gi, ' '));
+  if (RE.buy.test(text) || ((RE.save.test(text) || /\b(wanna|pengen|mau)\b/i.test(text)) && (RE.goalFor.test(text) || WHEN.test(text)))) {
+    WHEN.lastIndex = 0;
+    const name = tidyName(text.replace(WHEN, ' ').replace(RE.buy, ' ').replace(/\b(kalau|kalo|what if|if|can i|bisa|apa|aku|i|nggak|gak|ga|enggak)\b/gi, ' '));
+    WHEN.lastIndex = 0;
     return { type: 'needs-amount', name };
   }
   return null;

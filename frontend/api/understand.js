@@ -22,7 +22,7 @@ const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['type', 'amount', 'name', 'at', 'category', 'pct', 'delta', 'set', 'months'],
+        required: ['type', 'amount', 'name', 'at', 'category', 'pct', 'delta', 'set', 'months', 'estimated'],
         properties: {
           type: { type: 'string', enum: ['purchase', 'save', 'cut', 'income', 'monthly', 'target', 'goal'] },
           amount: nullable('number'),
@@ -33,6 +33,7 @@ const SCHEMA = {
           delta: nullable('number'),
           set: nullable('number'),
           months: nullable('integer'),
+          estimated: nullable('boolean'),
         },
       },
     },
@@ -51,8 +52,10 @@ Return only changes the person actually described. Fill fields that don't apply 
 - target: the person asks when their savings will reach an amount. amount.
 - goal: the person wants to save up for something specific ("nabung buat liburan 5 juta", "I want to save 3M for a phone by June", "mau punya dana darurat 10 juta"). amount (total needed), name (what it's for, capitalised), months = months from now until they want it (null if they didn't say). A purchase in the future that the person is planning towards can also be a purchase with at > 0.
 
+Prices: if the person names a specific thing to buy or save for (a phone model, a laptop, a trip to a place, a concert) but gives no price, estimate a typical current price for it in ${currency} (Indonesian market for IDR), round it, and set estimated to true. Questions like "how should I save", "gimana nabungnya", "what's the plan" with a timeframe mean a goal with months. Only put things in "unclear" when they are too vague to price ("something", "stuff") or not about money. For amounts the person gave, set estimated to false.
+
 Amounts are plain numbers in full units: "1,5 jt" = 1500000, "200rb" = 200000, "gopek" = 500, "goceng" = 5000, "ceban" = 10000, "cepek" = 100, "sejuta" = 1000000, "10M" = 10000000.
-If part of the text is a plan without an amount you can infer, or is not about money, copy that part into "unclear". Never invent amounts.`;
+If part of the text is too vague to price or is not about money, copy that part into "unclear".`;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

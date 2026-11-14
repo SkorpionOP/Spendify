@@ -178,8 +178,9 @@ export const simulate = (state, changes, now = new Date()) => {
   const spare = goalProgress(state.goals || [], base.savingsNow).spare; // savings not already set aside for other goals
   const free = Math.max(0, before.monthlyNet); // what she normally has left each month
   const plans = changes
-    .filter((c) => c.type === 'goal' || (c.type === 'purchase' && c.at > 0))
-    .map((c) => savingsPlan(c, spare, free, base.key));
+    .map((c, index) => ({ c, index }))
+    .filter(({ c }) => c.type === 'goal' || (c.type === 'purchase' && c.at > 0))
+    .map(({ c, index }) => ({ ...savingsPlan(c, spare, free, base.key), index, estimated: !!c.estimated }));
 
   return {
     base,

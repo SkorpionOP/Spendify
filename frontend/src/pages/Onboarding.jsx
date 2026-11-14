@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { History } from 'lucide-react';
+import { ChevronLeft, History } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { listSnapshots } from '../lib/persist';
 import { currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
@@ -7,9 +7,19 @@ import { CURRENCIES, getConfig, t } from '../lib/i18n';
 import { dateTime } from '../lib/dates';
 import { SplitSlider } from '../components/SplitSlider';
 import { LangSwitch } from '../components/LangSwitch';
+import { InstallHelp } from '../components/Nudges';
+import { GoalIllo, InstallIllo, PayIllo, PrivacyIllo } from '../components/Illustrations';
+import { useInstall } from '../lib/install';
 
 export default function Onboarding() {
-  const { state, setup, importData, restoreSnapshot, updateSettings } = useStore();
+  const { state, setup, importData, restoreSnapshot, updateSettings, addGoal } = useStore();
+  const { mode: installMode } = useInstall();
+  const [step, setStep] = useState(1);
+  const [trackPayment, setTrackPayment] = useState(false);
+  const [hideAmounts, setHideAmounts] = useState(false);
+  const [wantGoal, setWantGoal] = useState(false);
+  const [goalName, setGoalName] = useState('');
+  const [goalTarget, setGoalTarget] = useState('');
   const [latestCopy, setLatestCopy] = useState(null);
   const [name, setName] = useState('');
   const [salary, setSalary] = useState('');
@@ -27,8 +37,122 @@ export default function Onboarding() {
     e.preventDefault();
     if (!name.trim()) return setError(t('Add your name so the app can greet you.'));
     if (income <= 0) return setError(t('Enter your monthly income to plan your budget.'));
-    setup({ name, salary: income, needsPercent });
+    setError('');
+    setStep(2);
+    window.scrollTo(0, 0);
   };
+
+  // Step 2: optional choices. Everything here can be changed later.
+  const finish = (useChoices) => {
+    const target = parseAmountInput(goalTarget);
+    if (useChoices && wantGoal && goalName.trim() && !(target > 0)) return setError(t('Enter an amount above zero.'));
+    setup({ name, salary: income, needsPercent });
+    if (useChoices) {
+      updateSettings({ trackPayment, hideAmounts });
+      if (wantGoal && goalName.trim() && target > 0) addGoal({ name: goalName, target });
+    }
+  };
+
+  if (step === 2) {
+    return (
+      <div className="onboard">
+        <div className="onboard__nav">
+          <button type="button" className="icon-btn" onClick={() => setStep(1)} aria-label={t('Back')}>
+            <ChevronLeft size={22} />
+          </button>
+          <span className="onboard__step">{t('Step {n} of {total}', { n: 2, total: 2 })}</span>
+          <LangSwitch />
+        </div>
+
+        <div className="onboard__intro onboard__intro--small">
+          <h1>{t('Make it yours')}</h1>
+          <p>{t('A few optional extras. Turn on what you like, or skip.')}</p>
+        </div>
+
+        <ul className="choices">
+          <Choice
+            illo={<PayIllo />}
+            title={t('Ask how I paid')}
+            body={t('setup-pay')}
+            where={t('You can change this any time in Settings.')}
+            on={trackPayment}
+            onToggle={() => setTrackPayment((v) => !v)}
+          />
+          <Choice
+            illo={<PrivacyIllo />}
+            title={t('Hide amounts in public')}
+            body={t('setup-privacy')}
+            where={t('You can change this any time in Settings.')}
+            on={hideAmounts}
+            onToggle={() => setHideAmounts((v) => !v)}
+          />
+          <Choice
+            illo={<GoalIllo />}
+            title={t('Save for something')}
+            body={t('Pick a goal and watch your savings fill it up.')}
+            where={t('You can add or change goals any time from Home.')}
+            on={wantGoal}
+            onToggle={() => setWantGoal((v) => !v)}
+          >
+            {wantGoal && (
+              <div className="choice-goal">
+                <div className="goal-ideas" role="group" aria-label={t('Ideas')}>
+                  {['Holiday', 'New phone', 'Emergency fund'].map((idea) => (
+                    <button
+                      type="button"
+                      key={idea}
+                      className={`chip ${goalName === t(idea) ? 'is-on' : ''}`}
+                      onClick={() => setGoalName(t(idea))}
+                    >
+                      {t(idea)}
+                    </button>
+                  ))}
+                </div>
+                <label className="field">
+                  <span className="field-label">{t('What are you saving for?')}</span>
+                  <input value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder={t('e.g. Holiday in Bali')} maxLength={40} />
+                </label>
+                <label className="field">
+                  <span className="field-label">{t('Amount needed')}</span>
+                  <div className="input-prefix">
+                    <span aria-hidden="true">{currencySymbol()}</span>
+                    <input
+                      inputMode="numeric"
+                      value={goalTarget}
+                      onChange={(e) => (setGoalTarget(formatAmountInput(e.target.value)), setError(''))}
+                      placeholder={getConfig().currency === 'IDR' ? '5.000.000' : '1,000'}
+                    />
+                  </div>
+                </label>
+              </div>
+            )}
+          </Choice>
+          {installMode !== 'installed' && (
+            <li className="choice-card">
+              <InstallIllo />
+              <div className="choice-card__text">
+                <h2 className="choice-card__title">{t('Put Spendify on your home screen')}</h2>
+                <p className="choice-card__body">{t('It opens like a normal app, works offline, and your data is safer.')}</p>
+                <InstallHelp compact />
+                <p className="choice-card__where">{t('You can also do this later from Settings.')}</p>
+              </div>
+            </li>
+          )}
+        </ul>
+
+        {error && <p className="field-error">{error}</p>}
+
+        <div className="onboard__actions">
+          <button className="btn btn--primary btn--block" onClick={() => finish(true)}>
+            {t('Start tracking')}
+          </button>
+          <button className="link-btn" onClick={() => finish(false)}>
+            {t('Skip for now')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const restore = async (e) => {
     const file = e.target.files?.[0];
@@ -44,6 +168,7 @@ export default function Onboarding() {
   return (
     <div className="onboard">
       <div className="onboard__top">
+        <span className="onboard__step">{t('Step {n} of {total}', { n: 1, total: 2 })}</span>
         <LangSwitch />
       </div>
 
@@ -109,7 +234,7 @@ export default function Onboarding() {
         {error && <p className="field-error">{error}</p>}
 
         <button className="btn btn--primary btn--block" type="submit">
-          {t('Start tracking')}
+          {t('Next')}
         </button>
         <p className="onboard__fine">
           {income > 0
@@ -126,5 +251,25 @@ export default function Onboarding() {
         <input type="file" accept="application/json,.json" onChange={restore} hidden />
       </label>
     </div>
+  );
+}
+
+/** One optional setting on the setup screen: drawing, explanation, switch, and where to find it later. */
+function Choice({ illo, title, body, where, on, onToggle, children }) {
+  return (
+    <li className={`choice-card ${on ? 'is-on' : ''}`}>
+      {illo}
+      <div className="choice-card__text">
+        <div className="choice-card__head">
+          <h2 className="choice-card__title">{title}</h2>
+          <button type="button" role="switch" aria-checked={on} aria-label={title} className="switch" onClick={onToggle}>
+            <span className="switch__knob" />
+          </button>
+        </div>
+        <p className="choice-card__body">{body}</p>
+        {children}
+        <p className="choice-card__where">{where}</p>
+      </div>
+    </li>
   );
 }

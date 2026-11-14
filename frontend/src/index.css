@@ -3933,3 +3933,228 @@ label.btn {
 .savings__top .link-btn {
   flex: none;
 }
+
+/* ---------- setup step 2: optional extras ---------- */
+
+.onboard__top,
+.onboard__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.onboard__step {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+.onboard__nav .onboard__step {
+  flex: 1;
+}
+
+.onboard__intro--small h1 {
+  font-size: clamp(1.75rem, 7vw, 2.1rem);
+}
+
+.choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.choice-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.choice-card.is-on {
+  border-color: var(--leaf);
+  background: color-mix(in srgb, var(--leaf-soft) 55%, var(--surface));
+}
+
+.choice-card > .illo {
+  flex: none;
+  width: 60px;
+  height: 60px;
+}
+
+.choice-card__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choice-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.choice-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.choice-card__body {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.choice-card__where {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.choice-card .steps {
+  margin: 2px 0;
+  font-size: 0.875rem;
+}
+
+.choice-card .btn {
+  align-self: flex-start;
+}
+
+.choice-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0;
+}
+
+.onboard__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+/* Switch */
+.switch {
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--jar-track);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(38, 26, 59, 0.25);
+  transition: transform 0.2s;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--leaf);
+}
+
+.switch[aria-checked='true'] .switch__knob {
+  transform: translateX(18px);
+}
+
+.switch:focus-visible {
+  outline: 2.5px solid var(--jam);
+  outline-offset: 2px;
+}
+
+/* Illustrations */
+.illo__bg {
+  fill: var(--surface-2);
+}
+
+.choice-card.is-on .illo__bg {
+  fill: var(--surface);
+}
+
+.illo__ink {
+  fill: var(--ink);
+}
+
+.illo__paper {
+  fill: var(--surface);
+}
+
+.illo__jam {
+  fill: var(--jam);
+}
+
+.illo__leaf {
+  fill: var(--leaf);
+}
+
+.illo__amber {
+  fill: var(--amber);
+}
+
+.illo__line {
+  fill: var(--line);
+}
+
+.illo__blur {
+  fill: var(--ink-3);
+  opacity: 0.35;
+}
+
+.illo__coin {
+  fill: #fff;
+  font: 700 7.5px var(--font-body);
+}
+
+.illo__stroke,
+.illo__arrow {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.illo__arrow {
+  stroke: var(--leaf);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.illo__pole {
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch__knob,
+  .choice-card {
+    transition: none;
+  }
+}

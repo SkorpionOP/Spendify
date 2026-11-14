@@ -4,6 +4,8 @@
  * Strings use {name} placeholders. Keys are short English phrases so the code stays readable.
  */
 
+import { V5 } from './i18n-v5';
+
 export const LANGS = [
   { code: 'id', label: 'ID', name: 'Bahasa Indonesia', locale: 'id-ID' },
   { code: 'en', label: 'EN', name: 'English', locale: 'en-GB' },
@@ -872,3 +874,8 @@ Object.assign(DICT.id, {
   'An unexpected error occurred.': 'Terjadi kesalahan yang tidak terduga.',
   'Try again': 'Coba lagi',
 });
+
+for (const [key, en, id] of V5) {
+  DICT.en[key] = en;
+  DICT.id[key] = id;
+}

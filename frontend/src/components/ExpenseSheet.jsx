@@ -1,11 +1,13 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together on purpose */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronUp, Delete, LayoutGrid, PencilLine, Repeat, Trash2, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronUp, Delete, LayoutGrid, PencilLine, Repeat, Trash2, Wallet, X } from 'lucide-react';
 import { CATEGORIES, category as catMeta } from '../lib/categories';
 import { addMonths, monthKey, monthLabel, shortDate, toISODate, today } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
 import { CURRENCIES, catName, getConfig, ordinal, t } from '../lib/i18n';
 import { previewAfter } from '../lib/budget';
+import { limitStatus } from '../lib/money';
+import { PAYMENTS, payName } from '../lib/payments';
 import { useBackClose } from '../lib/backclose';
 import { useStore } from '../lib/store';
 import { useToast } from './Toasts';
@@ -138,6 +140,9 @@ function ExpenseSheet({ expense, onClose }) {
   const [category, setCategory] = useState(expense.category || expenses[0]?.category || 'Food');
   const [note, setNote] = useState(expense.note || '');
   const [date, setDate] = useState(expense.date || today());
+  const trackPay = !!state.settings.trackPayment;
+  // New expenses start with whatever she paid with last time.
+  const [pay, setPay] = useState(() => (expense.id ? expense.pay || '' : expenses.find((e) => e.pay)?.pay || 'cash'));
   const [repeat, setRepeat] = useState(false);
   const [repeatMandatory, setRepeatMandatory] = useState(() => MONTHLY_KINDS.has(expense.category || 'Food'));
   const [showAllCats, setShowAllCats] = useState(false);
@@ -205,6 +210,12 @@ function ExpenseSheet({ expense, onClose }) {
     return out;
   }, [expenses, note]);
 
+  const limit = useMemo(() => {
+    if (!state.limits[category]) return null;
+    const amt = hasValue ? value : 0;
+    return limitStatus(state, monthKey(date), { amount: amt, category, date, replacingId: expense.id }).find((l) => l.category === category);
+  }, [state, category, value, hasValue, date, expense.id]);
+
   const preview = useMemo(
     () => (hasValue ? previewAfter(state, { amount: value, date, replacingId: expense.id }) : null),
     [state, value, hasValue, date, expense.id]
@@ -258,13 +269,13 @@ function ExpenseSheet({ expense, onClose }) {
     buzz(15);
 
     if (isEdit) {
-      updateExpense(expense.id, { amount: v, category, note, date });
+      updateExpense(expense.id, { amount: v, category, note, date, pay: trackPay ? pay || undefined : expense.pay });
       toast(t('Changes saved'));
       onClose();
       return;
     }
 
-    const saved = addExpense({ amount: v, category, note, date });
+    const saved = addExpense({ amount: v, category, note, date, pay: trackPay ? pay : undefined });
     const day = Number(date.slice(8));
     const nextStartMonth = addMonths(monthKey(date), 1);
     if (repeat) {
@@ -310,12 +321,14 @@ function ExpenseSheet({ expense, onClose }) {
     }
     actions.push({ label: t('Undo'), onClick: () => deleteExpense(saved.id) });
 
+    const overLimit = limit && limit.level === 'over';
     const dipped = preview?.fromSavings > 0 && preview.isThisMonth;
     let message = dipped
       ? t('Added. {amount} came out of savings.', { amount: money(preview.fromSavings) })
       : t('Added {amount} for {category}', { amount: money(v), category: catName(category).toLowerCase() });
     if (repeat) message += t(', repeats monthly');
-    toast(message, { tone: dipped ? 'warn' : 'plain', actions, duration: offerMonthly ? 8000 : 5000 });
+    if (overLimit) message += ' ' + t('{category} is now {amount} over its limit.', { category: catName(category), amount: money(-limit.left) });
+    toast(message, { tone: dipped || overLimit ? 'warn' : 'plain', actions, duration: offerMonthly ? 8000 : 5000 });
     onClose();
   };
 
@@ -343,6 +356,15 @@ function ExpenseSheet({ expense, onClose }) {
         }
       }
     }
+  }
+
+  // Category limit line, shown once she is close to or past it.
+  let limitText = null;
+  if (limit && hasValue && limit.level !== 'ok') {
+    limitText =
+      limit.level === 'over'
+        ? t('Over your {category} limit by {amount}', { category: catName(category), amount: money(-limit.left) })
+        : t('{amount} left of your {category} limit', { category: catName(category), amount: money(limit.left) });
   }
 
   const visibleCats = showAllCats ? orderedCats : topCats;
@@ -407,6 +429,7 @@ function ExpenseSheet({ expense, onClose }) {
                 <span>
                   {isSum ? <strong>= {money(value, { precise: true })}. </strong> : null}
                   {previewText ? <span>{previewText}</span> : null}
+                  {limitText ? <span className={`entry__limit is-${limit.level}`}>{limitText}</span> : null}
                 </span>
               )}
             </div>
@@ -453,6 +476,7 @@ function ExpenseSheet({ expense, onClose }) {
 
           {/* Note + when */}
           <div className="entry__meta">
+            <div className="entry__noterow">
             <label className="entry__note">
               <PencilLine size={18} aria-hidden="true" />
               <span className="sr-only">{t('Note')}</span>
@@ -471,6 +495,22 @@ function ExpenseSheet({ expense, onClose }) {
                 enterKeyHint="done"
               />
             </label>
+            {trackPay && (
+              <label className={`chip chip--pay ${pay ? 'is-set' : ''}`}>
+                <Wallet size={15} aria-hidden="true" />
+                <span>{pay ? payName(pay) : t('Paid with')}</span>
+                <ChevronDown size={14} aria-hidden="true" />
+                <select value={pay} onChange={(e) => setPay(e.target.value)} aria-label={t('Paid with')}>
+                  {isEdit && <option value="">{t('Not set')}</option>}
+                  {PAYMENTS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {payName(m.id)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            </div>
             {noteMatches.length > 0 && (
               <div className="entry__suggest" role="group" aria-label={t('From your history')}>
                 {noteMatches.map((e) => (

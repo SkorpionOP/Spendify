@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Download, Search, X } from 'lucide-react';
+import { FileSpreadsheet, Search, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { CATEGORIES } from '../lib/categories';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
 import { GroupedExpenses } from '../components/ExpenseList';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { Sheet } from '../components/Sheet';
+import { useToast } from '../components/Toasts';
+import { payName } from '../lib/payments';
+import { buildCsv, saveCsv } from '../lib/csv';
+import { monthKey, monthLabel } from '../lib/dates';
 
 const PAGE = 60;
 
@@ -14,6 +19,8 @@ export default function History() {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('');
   const [limit, setLimit] = useState(PAGE);
+  const [exporting, setExporting] = useState(false);
+  const toast = useToast();
 
   const used = useMemo(() => CATEGORIES.filter((c) => expenses.some((e) => e.category === c.name)), [expenses]);
 
@@ -26,21 +33,32 @@ export default function History() {
           e.note.toLowerCase().includes(needle) ||
           e.category.toLowerCase().includes(needle) ||
           catName(e.category).toLowerCase().includes(needle) ||
+          (e.pay && payName(e.pay).toLowerCase().includes(needle)) ||
           String(e.amount).includes(needle.replace(/[.,\s]/g, '')))
     );
   }, [expenses, q, cat]);
 
   const total = filtered.reduce((s, e) => s + e.amount, 0);
 
-  const exportCsv = () => {
-    const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
-    const rows = [[t('Date'), t('Category'), t('Note'), t('Amount')], ...filtered.map((e) => [e.date, catName(e.category), e.note, e.amount])];
-    const blob = new Blob([rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `spendify-expenses.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  // Months with expenses, newest first, for the spreadsheet export.
+  const months = useMemo(() => {
+    const m = new Map();
+    for (const e of expenses) {
+      const k = monthKey(e.date);
+      const cur = m.get(k) || { key: k, count: 0, total: 0 };
+      cur.count++;
+      cur.total += e.amount;
+      m.set(k, cur);
+    }
+    return [...m.values()].sort((a, b) => (a.key < b.key ? 1 : -1));
+  }, [expenses]);
+
+  const exportRows = async (rows, name) => {
+    const ok = await saveCsv(buildCsv(rows), `spendify-${name}.csv`);
+    if (ok) {
+      toast(t('Spreadsheet saved'));
+      setExporting(false);
+    }
   };
 
   return (
@@ -48,11 +66,49 @@ export default function History() {
       <header className="page__head">
         <h1>{t('History')}</h1>
         {expenses.length > 0 && (
-          <button className="btn btn--ghost btn--sm" onClick={exportCsv}>
-            <Download size={16} /> CSV
+          <button className="btn btn--ghost btn--sm" onClick={() => setExporting(true)}>
+            <FileSpreadsheet size={16} /> {t('Excel')}
           </button>
         )}
       </header>
+
+      {exporting && (
+        <Sheet title={t('Save as spreadsheet')} onClose={() => setExporting(false)}>
+          <div className="panel">
+            <p className="muted">{t('export-help')}</p>
+            <ul className="export-list">
+              {(q || cat) && filtered.length > 0 && (
+                <li>
+                  <button className="export-item" onClick={() => exportRows(filtered, 'search')}>
+                    <span className="export-item__name">{t('What you searched for')}</span>
+                    <span className="export-item__meta private-num">
+                      {tn(filtered.length, '{n} expense', '{n} expenses')}, {money(total)}
+                    </span>
+                  </button>
+                </li>
+              )}
+              {months.map((m) => (
+                <li key={m.key}>
+                  <button className="export-item" onClick={() => exportRows(expenses.filter((e) => monthKey(e.date) === m.key), m.key)}>
+                    <span className="export-item__name">{monthLabel(m.key)}</span>
+                    <span className="export-item__meta private-num">
+                      {tn(m.count, '{n} expense', '{n} expenses')}, {money(m.total)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {months.length > 1 && (
+                <li>
+                  <button className="export-item" onClick={() => exportRows(expenses, 'all')}>
+                    <span className="export-item__name">{t('Everything')}</span>
+                    <span className="export-item__meta">{tn(expenses.length, '{n} expense', '{n} expenses')}</span>
+                  </button>
+                </li>
+              )}
+            </ul>
+          </div>
+        </Sheet>
+      )}
 
       <div className="search">
         <Search size={18} aria-hidden="true" />

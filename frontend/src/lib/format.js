@@ -107,3 +107,19 @@ export const amountToInput = (n) => {
   const s = d > 0 ? String(Math.round(Number(n) * 100) / 100).replace('.', decimalSep()) : String(Math.round(Number(n)));
   return formatAmountInput(s);
 };
+
+/** Tiny label for charts: "22rb", "1,5jt" in Indonesian, "22k", "1.5M" in English. No currency symbol. */
+export const tinyAmount = (n) => {
+  const v = Math.abs(Number(n) || 0);
+  const id = getConfig().lang === 'id';
+  const fmt = (x) => {
+    const s = x >= 10 ? String(Math.round(x)) : x.toFixed(1).replace(/\.0$/, '');
+    return id ? s.replace('.', ',') : s;
+  };
+  if (v < 1000) return String(Math.round(v));
+  if (v < 1_000_000) return fmt(v / 1000) + (id ? 'rb' : 'k');
+  return fmt(v / 1_000_000) + (id ? 'jt' : 'M');
+};
+
+/** Rounds to a friendly amount for sentences: nearest 1.000 for Rupiah, whole units otherwise. */
+export const roundNice = (n) => (getConfig().currency === 'IDR' ? Math.round(n / 1000) * 1000 : Math.round(n));

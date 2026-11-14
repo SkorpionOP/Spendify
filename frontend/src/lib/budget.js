@@ -1,5 +1,5 @@
 import { currentMonth, daysInMonth, monthKey, today } from './dates';
-import { monthSummary } from './store';
+import { monthSummary } from './money';
 
 /**
  * Plain-language picture of the current month:

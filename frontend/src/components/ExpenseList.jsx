@@ -3,6 +3,7 @@ import { category } from '../lib/categories';
 import { dayLabel } from '../lib/dates';
 import { money } from '../lib/format';
 import { catName, t } from '../lib/i18n';
+import { payName } from '../lib/payments';
 import { CategoryIcon } from './CategoryIcon';
 import { useExpenseSheet } from './ExpenseSheet';
 
@@ -31,6 +32,7 @@ export function ExpenseRow({ expense, showDate = false }) {
             {expense.note ? name : ''}
             {expense.note && showDate ? ', ' : ''}
             {showDate ? dayLabel(expense.date) : ''}
+            {expense.pay ? `${expense.note || showDate ? ', ' : ''}${payName(expense.pay)}` : ''}
           </span>
         </span>
         <span className="tx__amount">{money(expense.amount, { precise: true })}</span>

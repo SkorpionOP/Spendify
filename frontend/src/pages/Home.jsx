@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CalendarClock, Check, CircleHelp, Eye, EyeOff, Plus, Settings, Wallet, X } from 'lucide-react';
-import { monthSummary, useStore } from '../lib/store';
+import { AlertTriangle, CalendarClock, Check, CircleHelp, Eye, EyeOff, Gauge, Plus, Settings, Target, Wallet, X } from 'lucide-react';
+import { useStore } from '../lib/store';
+import { limitStatus } from '../lib/money';
+import { monthRecap, weekRecap } from '../lib/recap';
 import { useBackClose } from '../lib/backclose';
 import { monthPicture } from '../lib/budget';
-import { addMonths, currentMonth, greeting, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
-import { category } from '../lib/categories';
+import { currentMonth, greeting, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
 import { LangSwitch } from '../components/LangSwitch';
@@ -14,7 +15,23 @@ import { useExpenseSheet } from '../components/ExpenseSheet';
 import { BackupCard, InstallCard } from '../components/Nudges';
 import { Sheet } from '../components/Sheet';
 import { RepeatsPanel, TopupPanel, upcomingRepeats } from '../components/MoneyTools';
-import { CategoryIcon } from '../components/CategoryIcon';
+import { GoalEditor, SavingsCard } from '../components/Goals';
+import { LimitsPanel, LimitsSection } from '../components/Limits';
+
+const readSeen = (k) => {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+const writeSeen = (k, v) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* private mode: the card just shows again next time */
+  }
+};
 
 const STATUS = {
   ok: { label: 'On track', icon: Check },
@@ -25,24 +42,25 @@ const STATUS = {
 export default function Home() {
   const { state, expenses, updateSettings } = useStore();
   const open = useExpenseSheet();
-  const [panel, setPanel] = useState(null); // 'topup' | 'repeats' | 'help' | null
+  const [panel, setPanel] = useState(null); // 'topup' | 'repeats' | 'help' | 'goal' | 'limits' | null
+  const [goal, setGoal] = useState(null);
   const onPanelClosed = useCallback(() => setPanel(null), []);
   const { markOpen, requestClose } = useBackClose(panel !== null, onPanelClosed);
   const openPanel = (name) => {
     markOpen();
     setPanel(name);
   };
+  const editGoal = (g) => {
+    setGoal(g);
+    openPanel('goal');
+  };
   const hidden = !!state.settings.hideAmounts;
   const key = currentMonth();
   const p = useMemo(() => monthPicture(state), [state]);
   const monthName = monthLabel(key, { month: 'long' });
 
-  const totals = {};
-  for (const e of expenses) if (monthKey(e.date) === key) totals[e.category] = (totals[e.category] || 0) + e.amount;
-  const [topName, topTotal] = Object.entries(totals).sort((x, y) => y[1] - x[1])[0] || [];
-  const top = topName ? { name: topName, total: topTotal } : null;
 
-  const recent = expenses.slice(0, 8);
+  const recent = expenses.slice(0, 5);
 
   // Days in a row with at least one expense logged (today doesn't break the streak until it's over).
   const streak = useMemo(() => {
@@ -57,32 +75,26 @@ export default function Home() {
     return n;
   }, [expenses]);
 
-  // In the first week of a month, a one-time look back at the month that just ended.
-  const prevKey = addMonths(key, -1);
-  const [recapSeen, setRecapSeen] = useState(() => {
-    try {
-      return localStorage.getItem('spendify:recap') === prevKey;
-    } catch {
-      return false;
-    }
-  });
-  const [dayOfMonth] = useState(() => new Date().getDate());
-  let recap = null;
-  if (!recapSeen && dayOfMonth <= 7 && state.startMonth <= prevKey) {
-    const m = monthSummary(state, prevKey);
-    if (m && m.month === prevKey && m.budget > 0 && m.spent > 0) recap = m;
-  }
+  // Look-backs: the month that just ended (first 7 days), otherwise last week (Monday to Wednesday). Each shows once.
+  const [now] = useState(() => new Date());
+  const [seen, setSeen] = useState(() => ({ month: readSeen('spendify:recap'), week: readSeen('spendify:wrecap') }));
+  const mRecap = monthRecap(state, now);
+  const recap = mRecap && seen.month !== mRecap.key ? mRecap : null;
+  const wRecap = recap ? null : weekRecap(state, now);
+  const week = wRecap && seen.week !== wRecap.key && state.startMonth <= monthKey(wRecap.to) ? wRecap : null;
   const dismissRecap = () => {
-    try {
-      localStorage.setItem('spendify:recap', prevKey);
-    } catch {
-      /* ignore */
-    }
-    setRecapSeen(true);
+    writeSeen('spendify:recap', mRecap.key);
+    setSeen((x) => ({ ...x, month: mRecap.key }));
   };
+  const dismissWeek = () => {
+    writeSeen('spendify:wrecap', week.key);
+    setSeen((x) => ({ ...x, week: week.key }));
+  };
+  const limits = limitStatus(state, key);
+  const limitWarn = limits.filter((l) => l.level !== 'ok').length;
+
   const curKey = currentMonth();
   const nextRepeat = upcomingRepeats(state.recurring)[0];
-  const nextIsMandatory = nextRepeat ? nextRepeat.mandatory !== false : false;
   const skippedCount = state.recurring.filter((r) => (r.skippedMonths || []).includes(curKey)).length;
   const dueRepeats = state.recurring.filter(
     (r) => !(r.skippedMonths || []).includes(curKey) && !expenses.some((e) => e.recurringId === r.id && monthKey(e.date) === curKey)
@@ -115,6 +127,7 @@ export default function Home() {
         : t(`status-${p.status}`);
 
   const todayOver = p.todayLeft < 0;
+
 
   return (
     <div className={`page home ${hidden ? 'is-private' : ''}`}>
@@ -151,7 +164,7 @@ export default function Home() {
             <X size={16} />
           </button>
           <h2 id="recap-title" className="nudge__title">
-            {t('{month} recap', { month: monthLabel(prevKey, { month: 'long' }) })}
+            {t('{month} recap', { month: monthLabel(recap.key, { month: 'long' }) })}
           </h2>
           <p className="nudge__body">
             {recap.spent > recap.budget
@@ -163,120 +176,127 @@ export default function Home() {
         </section>
       )}
 
-      {/* 1. How much can I still spend this month? */}
-      <section className={`month-card is-${p.status}`} aria-labelledby="month-label">
-        <div className="month-card__top">
-          <p id="month-label" className="month-card__label">
-            {t('Money left this month')}
-          </p>
-          <button className="icon-btn icon-btn--sm" onClick={() => openPanel('help')} aria-label={t('How this works')}>
-            <CircleHelp size={18} />
+      {week && (
+        <section className="nudge nudge--recap" aria-labelledby="week-title">
+          <button className="icon-btn icon-btn--sm nudge__close" onClick={dismissWeek} aria-label={t('Got it')}>
+            <X size={16} />
           </button>
-        </div>
-        <p className="month-card__num">{money(p.left)}</p>
-
-        {st && (
-          <p className="status-pill">
-            <st.icon size={15} strokeWidth={2.75} aria-hidden="true" /> {t(st.label)}
+          <h2 id="week-title" className="nudge__title">
+            {t('Last week, {from} to {to}', { from: shortDate(week.from), to: shortDate(week.to) })}
+          </h2>
+          <p className="nudge__body">
+            {t('week-spent', { amount: money(week.spent), n: week.count })}{' '}
+            {week.change == null
+              ? ''
+              : week.change <= -0.05
+                ? t('week-less', { pct: Math.round(-week.change * 100) })
+                : week.change >= 0.05
+                  ? t('week-more', { pct: Math.round(week.change * 100) })
+                  : t('week-same')}{' '}
+            {t('week-top', { category: catName(week.topCat), amount: money(week.topAmount) })}
+            {week.noSpendDays > 0 ? ` ${tn(week.noSpendDays, 'week-nospend-1', 'week-nospend', {})}` : ''}
           </p>
-        )}
-
-        <div
-          className="meter"
-          role="meter"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(p.usedFrac * 100)}
-          aria-label={t('Budget used')}
-        >
-          <div className="meter__fill" style={{ '--w': `${p.usedFrac * 100}%` }} />
-        </div>
-        <div className="month-card__scale">
-          <span>{t('Spent {spent} of {budget}', { spent: money(p.spent), budget: money(p.budget) })}</span>
-          <span>{tn(p.daysLeft, '{n} day left in {month}', '{n} days left in {month}', { month: monthName })}</span>
-        </div>
-
-        <p className="month-card__status">{statusLine}</p>
-      </section>
-
-      {/* 2. How much can I spend today? */}
-      {p.status !== 'none' && (
-        <section className={`today-card ${todayOver ? 'is-over' : ''}`} aria-labelledby="today-label">
-          <div>
-            <p id="today-label" className="today-card__label">
-              {todayOver ? t('Over today’s share') : t('You can spend today')}
-            </p>
-            <p className="today-card__num">{money(Math.abs(p.todayLeft))}</p>
-            <p className="today-card__hint">
-              {p.status === 'over'
-                ? t('Budget used up today')
-                : todayOver
-                  ? t('Tomorrow’s share will be a little smaller.', { allowance: money(p.allowance) })
-                  : t('Today’s share {allowance}, spent {spent}', { allowance: money(p.allowance), spent: money(p.todaySpent) })}
-            </p>
-          </div>
-          <button className="btn btn--primary today-card__add" onClick={() => open()}>
-            <Plus size={18} strokeWidth={2.75} /> {t('Add expense')}
-          </button>
         </section>
       )}
 
-      {/* 3. Savings + where it goes */}
-      <div className="tiles tiles--2">
-        <div className="tile tile--save">
-          <p className="tile__label">{t('Savings')}</p>
-          <p className="tile__value">{money(p.leftSavings)}</p>
-          <p className="tile__hint">{p.carriedIn > 0 ? t('savings-hint-carry', { amount: money(p.carriedIn) }) : t('savings-hint')}</p>
-        </div>
-        <div className="tile">
-          <p className="tile__label">{t('Most spent on')}</p>
-          <p className="tile__value tile__value--text">
-            {top ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <CategoryIcon name={top.name} size={20} color={category(top.name).color} />
-                <span>{catName(top.name)}</span>
-              </span>
-            ) : (
-              '—'
-            )}
+      {/* One calm card: what's left this month, and what's left for today */}
+      <section className={`hero is-${p.status}`} aria-labelledby="hero-label">
+        <div className="hero__top">
+          <p id="hero-label" className="hero__label">
+            {t('Money left this month')}
           </p>
-          <p className="tile__hint">{top ? money(top.total) : t('no spending yet')}</p>
+          {st ? (
+            <button className="hero__status" onClick={() => openPanel('help')}>
+              <st.icon size={14} strokeWidth={2.75} aria-hidden="true" /> {t(st.label)}
+              <CircleHelp size={14} aria-hidden="true" className="hero__help" />
+            </button>
+          ) : (
+            <button className="icon-btn icon-btn--sm" onClick={() => openPanel('help')} aria-label={t('How this works')}>
+              <CircleHelp size={18} />
+            </button>
+          )}
         </div>
-      </div>
+        <p className="hero__num">{money(p.left)}</p>
 
-      <div className="actions">
-        <button className="action" onClick={() => openPanel('topup')}>
-          <span className="action__icon action__icon--money" aria-hidden="true">
-            <Wallet size={20} />
+        {p.status !== 'none' ? (
+          <>
+            <div
+              className="meter"
+              role="meter"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(p.usedFrac * 100)}
+              aria-label={t('Budget used')}
+            >
+              <div className="meter__fill" style={{ '--w': `${p.usedFrac * 100}%` }} />
+            </div>
+            <p className="hero__scale">
+              {t('Spent {spent} of {budget}', { spent: money(p.spent), budget: money(p.budget) })}.{' '}
+              {tn(p.daysLeft, '{n} day left in {month}', '{n} days left in {month}', { month: monthName })}.
+            </p>
+            {p.status !== 'ok' && <p className="hero__note">{statusLine}</p>}
+
+            <div className={`hero__today ${todayOver ? 'is-over' : ''}`}>
+              <div>
+                <p className="hero__today-label">{todayOver ? t('Over today’s share') : t('You can spend today')}</p>
+                <p className="hero__today-num">{money(Math.abs(p.todayLeft))}</p>
+              </div>
+              <button className="btn btn--primary hero__add" onClick={() => open()}>
+                <Plus size={18} strokeWidth={2.75} /> {t('Add expense')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="hero__note">{statusLine}</p>
+            <button className="btn btn--primary btn--block hero__add" onClick={() => open()}>
+              <Plus size={18} strokeWidth={2.75} /> {t('Add expense')}
+            </button>
+          </>
+        )}
+      </section>
+
+      {/* Shortcuts, e-wallet style */}
+      <nav className="shortcuts" aria-label={t('Shortcuts')}>
+        <button className="shortcut" onClick={() => openPanel('topup')}>
+          <span className="shortcut__icon shortcut__icon--money" aria-hidden="true">
+            <Wallet size={22} />
           </span>
-          <span className="action__text">
-            <span className="action__title">{t('Add money')}</span>
-            <span className="action__hint">{t('Bonus, gift or refund')}</span>
-          </span>
+          <span className="shortcut__label">{t('Add money')}</span>
         </button>
-        <button className="action" onClick={() => openPanel('repeats')}>
-          <span className="action__icon" aria-hidden="true">
-            <CalendarClock size={20} />
+        <button className="shortcut" onClick={() => openPanel('repeats')}>
+          <span className="shortcut__icon" aria-hidden="true">
+            <CalendarClock size={22} />
+            {state.recurring.length > 0 && <span className="shortcut__badge">{state.recurring.length}</span>}
           </span>
-          <span className="action__text">
-            <span className="action__title">
-              <span>{t('Monthly repeats')}</span>
-              {state.recurring.length > 0 && <span className="badge">{state.recurring.length}</span>}
-              {nextRepeat && (
-                <span className={`badge badge--sm ${nextIsMandatory ? 'badge--mandatory' : 'badge--flexible'}`}>
-                  {nextIsMandatory ? t('Mandatory') : t('Flexible')}
-                </span>
-              )}
-              {skippedCount > 0 && (
-                <span className="badge badge--sm badge--warn">
-                  {t('{n} skipped', { n: skippedCount })}
-                </span>
-              )}
-            </span>
-            <span className="action__hint">{repeatHint}</span>
-          </span>
+          <span className="shortcut__label">{t('Monthly repeats')}</span>
         </button>
-      </div>
+        <button className="shortcut" onClick={() => editGoal({})}>
+          <span className="shortcut__icon shortcut__icon--goal" aria-hidden="true">
+            <Target size={22} />
+          </span>
+          <span className="shortcut__label">{t('Savings goal')}</span>
+        </button>
+        <button className="shortcut" onClick={() => openPanel('limits')}>
+          <span className={`shortcut__icon ${limitWarn ? 'shortcut__icon--warn' : ''}`} aria-hidden="true">
+            <Gauge size={22} />
+            {limitWarn > 0 && <span className="shortcut__badge shortcut__badge--warn">{limitWarn}</span>}
+          </span>
+          <span className="shortcut__label">{t('Limits')}</span>
+        </button>
+      </nav>
+
+      {nextRepeat && dueTotal > 0 && (
+        <button className="next-repeat" onClick={() => openPanel('repeats')}>
+          <CalendarClock size={16} aria-hidden="true" />
+          <span>{repeatHint}</span>
+          {skippedCount > 0 && <span className="badge badge--sm badge--warn">{t('{n} skipped', { n: skippedCount })}</span>}
+        </button>
+      )}
+
+      <SavingsCard savings={p.leftSavings} carriedIn={p.carriedIn} onEdit={editGoal} />
+
+      <LimitsSection onManage={() => openPanel('limits')} onlyWarnings />
 
       {panel === 'topup' && (
         <Sheet title={t('Add money')} onClose={requestClose}>
@@ -288,9 +308,20 @@ export default function Home() {
           <RepeatsPanel />
         </Sheet>
       )}
+      {panel === 'goal' && goal && (
+        <Sheet title={goal.id ? goal.name : t('New savings goal')} onClose={requestClose}>
+          <GoalEditor goal={goal} onDone={requestClose} />
+        </Sheet>
+      )}
+      {panel === 'limits' && (
+        <Sheet title={t('Category limits')} onClose={requestClose}>
+          <LimitsPanel />
+        </Sheet>
+      )}
       {panel === 'help' && (
         <Sheet title={t('How this works')} onClose={requestClose}>
           <div className="explain">
+            {p.status !== 'none' && <p className="explain__status">{statusLine}</p>}
             <p>{t('how-1')}</p>
             <p>{t('how-2')}</p>
             <p>{t('how-3')}</p>

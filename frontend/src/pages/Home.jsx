@@ -17,6 +17,7 @@ import { Sheet } from '../components/Sheet';
 import { RepeatsPanel, TopupPanel, upcomingRepeats } from '../components/MoneyTools';
 import { GoalEditor, SavingsCard } from '../components/Goals';
 import { LimitsPanel, LimitsSection } from '../components/Limits';
+import { BetaTag } from '../components/BetaTag';
 
 const readSeen = (k) => {
   try {
@@ -305,7 +306,9 @@ export default function Home() {
             <Sparkles size={20} />
           </span>
           <span className="twin-cta__text">
-            <span className="twin-cta__title">{t('twin-cta-title')}</span>
+            <span className="twin-cta__title">
+              {t('twin-cta-title')} <BetaTag />
+            </span>
             <span className="twin-cta__body">{t('twin-cta-body')}</span>
           </span>
           <ChevronRight size={20} aria-hidden="true" />

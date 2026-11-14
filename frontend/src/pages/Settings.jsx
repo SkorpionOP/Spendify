@@ -15,6 +15,7 @@ import { RepeatsPanel, TopupPanel } from '../components/MoneyTools';
 import { InstallHelp } from '../components/Nudges';
 import { LimitsPanel } from '../components/Limits';
 import { useToast } from '../components/Toasts';
+import { BetaTag } from '../components/BetaTag';
 
 const ago = (ms, now) => {
   if (!ms) return t('never');
@@ -166,7 +167,9 @@ export default function Settings() {
         </div>
 
         <div className="field">
-          <span className="field-label">{t('AI help in What if…?')}</span>
+          <span className="field-label">
+            {t('AI help in What if…?')} <BetaTag />
+          </span>
           <button
             type="button"
             className={`btn btn--ghost btn--block ${state.settings.aiHelp !== false ? 'is-on' : ''}`}

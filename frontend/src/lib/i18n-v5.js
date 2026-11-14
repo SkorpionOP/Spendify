@@ -162,6 +162,9 @@ export const V5 = [
   ['It opens like a normal app, works offline, and your data is safer.', 'It opens like a normal app, works offline, and your data is safer.', 'Bisa dibuka seperti aplikasi biasa, jalan tanpa internet, dan datanya lebih aman.'],
   ['You can also do this later from Settings.', 'You can also do this later from Settings.', 'Bisa juga nanti dari Pengaturan.'],
   ['Skip for now', 'Skip for now', 'Lewati dulu'],
+  // AI assistant is still in beta
+  ['Beta', 'Beta', 'Beta'],
+  ['beta-hint', 'Still being tested. Answers can be wrong, so double-check before deciding.', 'Masih tahap uji coba. Jawabannya bisa keliru, jadi cek lagi sebelum memutuskan.'],
   // Payday / pay cycle
   ['When do you get paid?', 'When do you get paid?', 'Tanggal berapa kamu gajian?'],
   ['payday-chip', '{ord}', 'Tgl {day}'],

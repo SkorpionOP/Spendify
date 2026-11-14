@@ -11,6 +11,7 @@ import { payName } from '../lib/payments';
 import { MonthSwitcher } from '../components/MonthSwitcher';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseSheet } from '../components/ExpenseSheet';
+import { BetaTag } from '../components/BetaTag';
 
 export default function Insights() {
   const { state } = useStore();
@@ -34,7 +35,7 @@ export default function Insights() {
         </div>
       </header>
       <Link to="/twin" className="btn btn--ghost btn--sm insights__twin">
-        <Sparkles size={16} /> {t('Try a what-if')}
+        <Sparkles size={16} /> {t('Try a what-if')} <BetaTag />
       </Link>
 
       {d.list.length === 0 ? (

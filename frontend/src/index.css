@@ -1816,6 +1816,24 @@ label.btn {
   border-color: var(--ink-3);
 }
 
+.beta-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--jam) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--jam) 30%, transparent);
+  color: var(--jam);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 .badge {
   display: inline-grid;
   place-items: center;

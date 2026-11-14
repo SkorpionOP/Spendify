@@ -12,6 +12,7 @@ import { addMonths, monthLabel } from '../lib/dates';
 import { amountToInput, compact, currencySymbol, formatAmountInput, money, parseAmountInput, roundUpNice } from '../lib/format';
 import { catName, getConfig, t, tn } from '../lib/i18n';
 import { useToast } from '../components/Toasts';
+import { BetaTag } from '../components/BetaTag';
 
 const EXAMPLES = ['ex-analyze', 'ex-improve', 'ex-goal', 'ex-buy', 'ex-cut', 'ex-income'];
 
@@ -278,7 +279,9 @@ export default function Twin() {
         <Link to="/" className="icon-btn" aria-label={t('Back to home')}>
           <ChevronLeft size={22} />
         </Link>
-        <h1>{t('Ask Spendify')}</h1>
+        <h1>
+          {t('Ask Spendify')} <BetaTag />
+        </h1>
         {started && (
           <button className="link-btn twin__new" onClick={reset}>
             {t('New chat')}

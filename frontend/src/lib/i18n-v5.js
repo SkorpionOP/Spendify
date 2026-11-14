@@ -175,7 +175,7 @@ export const V5 = [
   ['Buy {name} for {amount}, {when}', 'Buy {name} for {amount}, {when}', 'Beli {name} {amount}, {when}'],
   ['something', 'something', 'sesuatu'],
   ['Save {amount} more every month', 'Save {amount} more every month', 'Nabung {amount} lagi tiap bulan'],
-  ['Stop spending on {category}', 'Stop spending on {category}', 'Berhenti belanja {category}'],
+  ['Stop spending on {category}', 'Stop spending on {category}', 'Berhenti beli {category}'],
   ['Spend {pct}% less on {category}', 'Spend {pct}% less on {category}', 'Kurangi {category} {pct}%'],
   ['(I guessed 20%)', '(I guessed 20%)', '(aku tebak 20%)'],
   ['Spend {amount} less on {category} a month', 'Spend {amount} less on {category} a month', 'Kurangi {category} {amount} per bulan'],
@@ -242,4 +242,14 @@ export const V5 = [
   ['twin-cta-title', 'What if…?', 'Kalau…?'],
   ['twin-cta-body', 'Try a purchase, saving more, or a raise, without touching your real money.', 'Coba beli sesuatu, nabung lebih, atau gaji naik, tanpa mengubah uang aslimu.'],
   ['Try a what-if', 'Try a what-if', 'Coba simulasi'],
+  // AI help
+  ['Thinking…', 'Thinking…', 'Sebentar…'],
+  ['Understood with AI', 'Understood with AI', 'Dipahami dengan bantuan AI'],
+  ['AI help in What if…?', 'AI help in What if…?', 'Bantuan AI di Kalau…?'],
+  ['AI help is on', 'AI help is on', 'Bantuan AI menyala'],
+  ['AI help is off', 'AI help is off', 'Bantuan AI mati'],
+  ['ai-note', 'Uses AI to understand your sentence, so it needs internet. Only the sentence is sent, never your expenses or savings. Offline, the app uses a basic reader instead.', 'Pakai AI untuk memahami kalimatmu, jadi butuh internet. Yang dikirim cuma kalimatnya, bukan pengeluaran atau tabunganmu. Tanpa internet, aplikasi memakai pemahaman dasar.'],
+  ['ai-off-note', 'AI help is off, so a basic reader on this phone is used. It understands simpler sentences. You can turn AI on in Settings.', 'Bantuan AI mati, jadi dipakai pemahaman dasar di HP ini. Kalimatnya sebaiknya sederhana. AI bisa dinyalakan di Pengaturan.'],
+  ['ai-fallback', 'AI isn’t available right now (you may be offline, or it’s busy), so this was read with the basic reader. Simpler sentences work best.', 'AI sedang tidak bisa dipakai (mungkin offline atau sedang sibuk), jadi kalimatmu dibaca dengan pemahaman dasar. Kalimat sederhana paling aman.'],
+  ['ai-help-detail', 'What if…? sentences are read by AI (Groq) for better results. This needs internet, and only that sentence is sent. Turn it off to keep everything on this phone; a basic reader is used instead.', 'Kalimat di Kalau…? dibaca AI (Groq) supaya hasilnya lebih tepat. Butuh internet, dan yang dikirim cuma kalimat itu. Matikan supaya semuanya tetap di HP ini; aplikasi akan memakai pemahaman dasar.'],
 ];

@@ -4,6 +4,8 @@ import { Bookmark, ChevronLeft, Mic, MicOff, Sparkles, Trash2, X } from 'lucide-
 import { useStore } from '../lib/store';
 import { simulate } from '../lib/twin';
 import { clauses, understand } from '../lib/nlu';
+import { askAI } from '../lib/ai';
+import { cleanChange } from '../lib/changes';
 import { addMonths, monthLabel } from '../lib/dates';
 import { compact, money } from '../lib/format';
 import { catName, getConfig, t, tn } from '../lib/i18n';
@@ -48,38 +50,68 @@ export default function Twin() {
   const { state, saveScenario, removeScenario } = useStore();
   const toast = useToast();
   const [text, setText] = useState('');
-  const [applied, setApplied] = useState('');
+  // What is being simulated: each change with the words it came from. `ai` marks ones the AI read.
+  const [items, setItems] = useState([]);
+  const [unclear, setUnclear] = useState([]);
+  const [thinking, setThinking] = useState(false);
+  const [fellBack, setFellBack] = useState(false); // AI was wanted but unavailable, so the basic reader was used
   const [listening, setListening] = useState(false);
   const recRef = useRef(null);
   const [now] = useState(() => new Date());
   const hidden = !!state.settings.hideAmounts;
 
-  // Each understood change remembers the words it came from, so one can be removed on its own.
-  const parsed = useMemo(() => {
-    const items = [];
-    const unclear = [];
-    for (const part of clauses(applied)) {
-      const r = understand(part);
-      r.changes.forEach((change) => items.push({ change, source: part }));
-      unclear.push(...r.unclear);
-    }
-    return { items, changes: items.map((x) => x.change), unclear };
-  }, [applied]);
-  const result = useMemo(() => (parsed.changes.length ? simulate(state, parsed.changes, now) : null), [state, parsed, now]);
+  const applied = items.length > 0 || unclear.length > 0;
+  const changes = useMemo(() => items.map((x) => x.change), [items]);
+  const result = useMemo(() => (changes.length ? simulate(state, changes, now) : null), [state, changes, now]);
+  const aiOn = state.settings.aiHelp !== false;
   const noIncome = !(state.plans && Object.values(state.plans).some((p) => p.salary > 0));
 
-  const run = (value = text) => {
-    const v = value.trim();
-    if (!v) return;
-    // Add to what is already being simulated, so she can build a scenario step by step
-    setApplied((cur) => (cur ? `${cur}, ${v}` : v));
-    setText('');
+  // The basic reader that works offline, clause by clause
+  const readLocally = (v) => {
+    const found = [];
+    const missed = [];
+    for (const part of clauses(v)) {
+      const r = understand(part);
+      r.changes.forEach((change) => found.push({ change, source: part }));
+      missed.push(...r.unclear);
+    }
+    return { found, missed };
   };
 
-  const removeChange = (i) => {
-    // Rebuild the sentence from what's left so the saved scenario stays readable
-    const kept = [...new Set(parsed.items.filter((_, j) => j !== i).map((x) => x.source))];
-    setApplied(kept.join(', '));
+  // With AI help on and internet available, the AI reads the sentence (better with casual phrasing).
+  // Offline, switched off, or if the AI is busy, the basic reader on the phone takes over.
+  const run = async (value = text) => {
+    const v = value.trim();
+    if (!v || thinking) return;
+    setText('');
+    let found = null;
+    let left = [];
+    let usedFallback = false;
+    if (aiOn) {
+      setThinking(true);
+      const ai = await askAI(v);
+      setThinking(false);
+      if (ai && ai.changes.length) {
+        found = ai.changes.map((change) => ({ change, source: v, ai: true }));
+        left = ai.unclear.map((u) => ({ text: u, hint: null }));
+      } else if (!ai) usedFallback = true;
+    }
+    if (!found) {
+      const local = readLocally(v);
+      found = local.found;
+      left = local.missed;
+    }
+    // Add to what is already being simulated, so she can build a scenario step by step
+    setItems((cur) => [...cur, ...found]);
+    setUnclear(left);
+    setFellBack(usedFallback);
+  };
+
+  const removeChange = (i) => setItems((cur) => cur.filter((_, j) => j !== i));
+  const reset = () => {
+    setItems([]);
+    setUnclear([]);
+    setFellBack(false);
   };
 
   const listen = () => {
@@ -107,9 +139,10 @@ export default function Twin() {
   };
 
   const save = () => {
-    const name = window.prompt(t('Name this scenario'), parsed.changes[0] ? describe(parsed.changes[0]) : '');
+    const sentence = [...new Set(items.map((x) => x.source))].join(', ');
+    const name = window.prompt(t('Name this scenario'), changes[0] ? describe(changes[0]) : '');
     if (name == null) return;
-    saveScenario({ name: name || applied.slice(0, 40), text: applied });
+    saveScenario({ name: name || sentence.slice(0, 40), text: sentence, items });
     toast(t('Scenario saved. Your real data is unchanged.'));
   };
 
@@ -154,10 +187,13 @@ export default function Twin() {
                 {listening ? <MicOff size={20} /> : <Mic size={20} />}
               </button>
             )}
-            <button type="submit" className="btn btn--primary ask__go" disabled={!text.trim()}>
-              {t('Try')}
+            <button type="submit" className="btn btn--primary ask__go" disabled={!text.trim() || thinking}>
+              {thinking ? t('Thinking…') : t('Try')}
             </button>
           </form>
+          <p className="twin__ai-note">
+            <Sparkles size={13} aria-hidden="true" /> {aiOn ? t('ai-note') : t('ai-off-note')}
+          </p>
 
           {!applied && (
             <div className="twin__examples" role="group" aria-label={t('Ideas')}>
@@ -177,7 +213,16 @@ export default function Twin() {
               <ul className="saved">
                 {state.scenarios.map((s) => (
                   <li key={s.id}>
-                    <button className="saved__open" onClick={() => setApplied(s.text)}>
+                    <button
+                      className="saved__open"
+                      onClick={() => {
+                        const kept = (s.items || []).map((x) => ({ ...x, change: cleanChange(x.change) })).filter((x) => x.change);
+                        if (kept.length) {
+                          setItems(kept);
+                          setUnclear([]);
+                        } else run(s.text);
+                      }}
+                    >
                       <Bookmark size={16} aria-hidden="true" />
                       <span>
                         <strong>{s.name}</strong>
@@ -197,21 +242,29 @@ export default function Twin() {
             <section className="section" aria-labelledby="changes-title">
               <div className="section__head">
                 <h2 id="changes-title">{t('Your scenario')}</h2>
-                <button className="link-btn" onClick={() => setApplied('')}>
+                <button className="link-btn" onClick={reset}>
                   {t('Start over')}
                 </button>
               </div>
               <ul className="changes">
-                {parsed.changes.map((c, i) => (
+                {items.map(({ change: c, ai }, i) => (
                   <li key={i} className="change">
-                    <span className="change__text private-num">{describe(c)}</span>
+                    <span className="change__text private-num">
+                      {describe(c)}
+                      {ai && (
+                        <span className="change__ai" title={t('Understood with AI')}>
+                          <Sparkles size={13} aria-label={t('Understood with AI')} />
+                        </span>
+                      )}
+                    </span>
                     <button className="icon-btn icon-btn--sm" onClick={() => removeChange(i)} aria-label={t('Remove')}>
                       <X size={16} />
                     </button>
                   </li>
                 ))}
               </ul>
-              {parsed.unclear.map((u, i) => (
+              {fellBack && <p className="twin__fallback">{t('ai-fallback')}</p>}
+              {unclear.map((u, i) => (
                 <p key={i} className="unclear">
                   {u.hint != null
                     ? t('How much is {name}? Try adding the price, like “{name} 3 juta”.', { name: u.hint || t('it') })

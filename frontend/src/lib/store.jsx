@@ -317,8 +317,11 @@ export function StoreProvider({ children }) {
 
   /* saved "what if" scenarios */
   const saveScenario = useCallback(
-    ({ name, text }) =>
-      setState((s) => ({ ...s, scenarios: [{ id: uid(), name: name.trim(), text: text.trim(), createdAt: Date.now() }, ...s.scenarios].slice(0, 20) })),
+    ({ name, text, items = [] }) =>
+      setState((s) => ({
+        ...s,
+        scenarios: [{ id: uid(), name: name.trim(), text: text.trim(), items, createdAt: Date.now() }, ...s.scenarios].slice(0, 20),
+      })),
     [setState]
   );
   const removeScenario = useCallback((id) => setState((s) => ({ ...s, scenarios: s.scenarios.filter((x) => x.id !== id) })), [setState]);

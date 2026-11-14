@@ -97,3 +97,15 @@ describe('understand (English)', () => {
     expect(one('when will I have 10 million saved')).toEqual({ type: 'target', amount: 10_000_000 });
   });
 });
+
+describe('when a purchase happens', () => {
+  const NOV = new Date(2026, 10, 16); // November
+  const at = (text) => understand(text, NOV).changes[0];
+  it('reads year end, next year and month names', () => {
+    expect(at('mau ke jepang akhir tahun 20jt')).toMatchObject({ type: 'purchase', at: 1, name: 'Ke jepang' });
+    expect(at('beli motor tahun depan 25 juta')).toMatchObject({ at: 2, name: 'Motor' });
+    expect(at('liburan bulan Maret 5 juta')).toMatchObject({ at: 4 });
+    expect(at('buy a laptop in March for 10 million')).toMatchObject({ at: 4, name: 'Laptop' });
+    expect(at('beli tas 2 juta')).toMatchObject({ at: 0 });
+  });
+});

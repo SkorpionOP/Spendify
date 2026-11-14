@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, BellOff, ChevronLeft, Download, Eye, EyeOff, History as HistoryIcon, Share, ShieldCheck, ShieldAlert, Upload, Wallet } from 'lucide-react';
+import { Bell, BellOff, ChevronLeft, Download, Eye, EyeOff, History as HistoryIcon, Share, ShieldCheck, ShieldAlert, Sparkles, Upload, Wallet } from 'lucide-react';
 import { isNotificationSupported, requestNotificationPermission } from '../lib/notifications';
 import { planFor, useStore } from '../lib/store';
 import { currentMonth, dateTime } from '../lib/dates';
@@ -162,6 +162,20 @@ export default function Settings() {
             <span>{state.settings.trackPayment ? t('Asking how you paid') : t('Ask how I paid')}</span>
           </button>
           <span className="muted small">{t('pay-help')}</span>
+        </div>
+
+        <div className="field">
+          <span className="field-label">{t('AI help in What if…?')}</span>
+          <button
+            type="button"
+            className={`btn btn--ghost btn--block ${state.settings.aiHelp !== false ? 'is-on' : ''}`}
+            onClick={() => updateSettings({ aiHelp: state.settings.aiHelp === false })}
+            aria-pressed={state.settings.aiHelp !== false}
+          >
+            <Sparkles size={18} />
+            <span>{state.settings.aiHelp !== false ? t('AI help is on') : t('AI help is off')}</span>
+          </button>
+          <span className="muted small">{t('ai-help-detail')}</span>
         </div>
 
         {isNotificationSupported() && (

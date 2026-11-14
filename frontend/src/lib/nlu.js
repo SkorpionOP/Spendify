@@ -152,7 +152,31 @@ export const clauses = (text) =>
     .map((s) => s.trim())
     .filter((s) => s && /\w/.test(s));
 
-export const parseClause = (raw) => {
+// Month names → 0..11, for "bulan Maret" / "in March"
+const MONTHS = [
+  ['januari', 'january', 'jan'], ['februari', 'february', 'feb'], ['maret', 'march', 'mar'], ['april', 'apr'], ['mei', 'may'],
+  ['juni', 'june', 'jun'], ['juli', 'july', 'jul'], ['agustus', 'august', 'aug', 'agu'], ['september', 'sep', 'sept'],
+  ['oktober', 'october', 'oct', 'okt'], ['november', 'nov'], ['desember', 'december', 'dec', 'des'],
+];
+const WHEN = /\b(akhir tahun|end of (?:the )?year|tahun depan|next year|bulan depan|next month|(?:bulan|in|di|pas|on)\s+(?:januari|january|februari|february|maret|march|april|mei|may|juni|june|juli|july|agustus|august|september|oktober|october|november|desember|december))\b|\b(?:\d+)\s*bulan lagi\b|\bin\s*\d+\s*months?\b/gi;
+
+/** How many months from now a purchase happens (0 = this month). */
+const whenIn = (text, now) => {
+  const m = now.getMonth();
+  if (/\b(bulan depan|next month)\b/i.test(text)) return 1;
+  const n = text.match(RE.inMonths);
+  if (n) return Math.min(12, Number(n.slice(1).find(Boolean)));
+  if (/\b(akhir tahun|end of (the )?year)\b/i.test(text)) return 11 - m;
+  if (/\b(tahun depan|next year)\b/i.test(text)) return 12 - m;
+  const named = text.match(/\b(?:bulan|in|di|pas|on)\s+([a-z]+)\b/i);
+  if (named) {
+    const i = MONTHS.findIndex((names) => names.includes(named[1].toLowerCase()));
+    if (i >= 0) return (i - m + 12) % 12;
+  }
+  return 0;
+};
+
+export const parseClause = (raw, now = new Date()) => {
   const text = wordsToDigits(raw);
   const amounts = amountsIn(text);
   const amount = amounts[0];
@@ -190,8 +214,8 @@ export const parseClause = (raw) => {
 
   // One-off purchase
   if (amount) {
-    const at = RE.later.test(text) ? 1 : Number(text.match(RE.inMonths)?.slice(1).find(Boolean) || 0);
-    const name = tidyName(text.replace(RE.later, ' ').replace(RE.inMonths, ' ').replace(RE.buy, ' ').replace(/\b(kalau|kalo|what if|if|can i|bisa|apa|aku|i)\b/gi, ' '));
+    const at = whenIn(text, now);
+    const name = tidyName(text.replace(WHEN, ' ').replace(RE.buy, ' ').replace(/\b(kalau|kalo|what if|if|can i|bisa|apa|aku|i)\b/gi, ' '));
     return { type: 'purchase', amount, name, at };
   }
 
@@ -203,11 +227,11 @@ export const parseClause = (raw) => {
   return null;
 };
 
-export const understand = (text) => {
+export const understand = (text, now = new Date()) => {
   const changes = [];
   const unclear = [];
   for (const c of clauses(text || '')) {
-    const r = parseClause(c);
+    const r = parseClause(c, now);
     if (r && r.type !== 'needs-amount') changes.push(r);
     else unclear.push({ text: c, hint: r?.type === 'needs-amount' ? r.name || '' : null });
   }

@@ -4480,3 +4480,33 @@ label.btn {
     white-space: normal;
   }
 }
+
+/* AI help in the simulator */
+.twin__ai-note {
+  margin: -10px 4px 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.change__ai {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-left: 6px;
+  color: var(--jam);
+}
+
+.twin__ai-note svg {
+  vertical-align: -2px;
+  color: var(--jam);
+}
+
+.twin__fallback {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}

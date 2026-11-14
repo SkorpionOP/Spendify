@@ -22,6 +22,7 @@ export const empty = () => ({
     hideAmounts: false,
     notifyRecurring: false,
     trackPayment: false,
+    aiHelp: true,
   },
   startMonth: currentMonth(),
   savedAt: 0,
@@ -57,6 +58,7 @@ export const normalize = (raw) => {
       : {};
   s.scenarios = Array.isArray(s.scenarios) ? s.scenarios.filter((x) => x && x.id && typeof x.text === 'string') : [];
   s.settings = { ...base.settings, ...(s.settings || {}) };
+  s.settings.aiHelp = s.settings.aiHelp !== false;
   s.settings.trackPayment = !!s.settings.trackPayment;
   s.settings.hideAmounts = !!s.settings.hideAmounts;
   s.settings.notifyRecurring = !!s.settings.notifyRecurring;

@@ -19,6 +19,8 @@ export const CURRENCIES = [
   { code: 'EUR', name: 'Euro (€)', decimals: 2 },
   { code: 'AUD', name: 'Australian Dollar (A$)', decimals: 2 },
   { code: 'INR', name: 'Indian Rupee (₹)', decimals: 2 },
+  // Browsers print "NPR"; people in Nepal write "Rs".
+  { code: 'NPR', name: 'Nepalese Rupee (Rs)', decimals: 2, symbol: 'Rs' },
 ];
 
 // Built for an Indonesian user: default to Bahasa Indonesia; the ID/EN switch is always one tap away.

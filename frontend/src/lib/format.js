@@ -8,7 +8,21 @@ const nf = (key, opts) => {
   const { currency } = getConfig();
   const locale = numLocale();
   const k = `${locale}|${currency}|${key}`;
-  if (!cache.has(k)) cache.set(k, new Intl.NumberFormat(locale, { style: 'currency', currency, ...opts }));
+  if (!cache.has(k)) {
+    const f = new Intl.NumberFormat(locale, { style: 'currency', currency, ...opts });
+    const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol;
+    // Swap in the local symbol where the browser's own one isn't what people use (NPR -> Rs).
+    const swap = (parts) => parts.map((part) => (part.type === 'currency' ? { ...part, value: symbol } : part));
+    cache.set(
+      k,
+      symbol
+        ? {
+            format: (v) => swap(f.formatToParts(v)).map((part) => part.value).join(''),
+            formatToParts: (v) => swap(f.formatToParts(v)),
+          }
+        : f
+    );
+  }
   return cache.get(k);
 };
 

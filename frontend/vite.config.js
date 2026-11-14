@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { localApi } from './local-api.js'
 
 export default defineConfig({
+  // Pre-bundle these up front, so the dev server never re-bundles them mid-session
+  // (that can leave an open tab with two copies of React: "Invalid hook call").
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-router-dom', 'lucide-react'],
+  },
   plugins: [
     react(),
     localApi(),

@@ -25,7 +25,7 @@
 >
 > - **Back up** from Settings → Backup (downloads a `.json` file); **restore** it on a new phone or after clearing the browser.
 > - History can export a CSV.
-> - Run it: `cd frontend && npm install && npm run dev`. Deploys as a static site (see `vercel.json`).
+> - Run it: `cd frontend && npm install && npm run dev`. Deploys as a static site (see `frontend/vercel.json`; the Vercel project Root Directory is `frontend`).
 > - The `backend/` folder is no longer used or deployed (the Python `api/` entry point was removed).
 
 ## ✨ Features

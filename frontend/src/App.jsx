@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { StoreProvider, useStore } from './lib/store';
-import { ToastProvider } from './components/Toasts';
+import { ToastProvider, useToast } from './components/Toasts';
+import { t } from './lib/i18n';
 import { ExpenseSheetProvider } from './components/ExpenseSheet';
 import { AppShell } from './components/AppShell';
 import Onboarding from './pages/Onboarding';
@@ -10,9 +12,32 @@ import Insights from './pages/Insights';
 import History from './pages/History';
 import Settings from './pages/Settings';
 
-function Routed() {
-  const { state } = useStore();
+function useTheme(theme) {
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light' || theme === 'dark') root.dataset.theme = theme;
+    else delete root.dataset.theme;
+    const bg = getComputedStyle(root).getPropertyValue('--paper').trim();
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', bg));
+  }, [theme]);
+}
 
+function Routed() {
+  const { state, ready, recovered, clearRecovered } = useStore();
+  const toast = useToast();
+  useTheme(state.settings.theme);
+  useEffect(() => {
+    document.documentElement.lang = state.settings.lang || 'id';
+  }, [state.settings.lang]);
+
+  useEffect(() => {
+    if (recovered) {
+      toast(recovered, { duration: 8000 });
+      clearRecovered();
+    }
+  }, [recovered, toast, clearRecovered]);
+
+  if (!ready) return <div className="splash" aria-label={t('Loading')} />;
   if (!state.profile) return <Onboarding />;
 
   return (

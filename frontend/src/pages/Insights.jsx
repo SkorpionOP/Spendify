@@ -3,6 +3,7 @@ import { monthSummary, useStore } from '../lib/store';
 import { addMonths, currentMonth, daysInMonth, dayLabel, monthKey, monthLabel } from '../lib/dates';
 import { category } from '../lib/categories';
 import { compact, money } from '../lib/format';
+import { catName, t, tn } from '../lib/i18n';
 import { MonthSwitcher } from '../components/MonthSwitcher';
 
 export default function Insights() {
@@ -37,51 +38,54 @@ export default function Insights() {
   return (
     <div className="page">
       <header className="page__head">
-        <h1>Insights</h1>
+        <h1>{t('Insights')}</h1>
         <MonthSwitcher value={month} onChange={setMonth} />
       </header>
 
       <div className="tiles tiles--2">
         <div className="tile">
-          <p className="tile__label">Spent</p>
+          <p className="tile__label">{t('Spent')}</p>
           <p className="tile__value">{money(data.total)}</p>
           <p className="tile__hint">
             {delta === null
-              ? `nothing logged in ${monthLabel(addMonths(month, -1), { month: 'long' })}`
-              : `${Math.abs(delta).toFixed(0)}% ${delta >= 0 ? 'more' : 'less'} than ${monthLabel(addMonths(month, -1), { month: 'long' })}`}
+              ? t('nothing logged in {month}', { month: monthLabel(addMonths(month, -1), { month: 'long' }) })
+              : t(delta >= 0 ? '{pct}% more than {month}' : '{pct}% less than {month}', {
+                  pct: Math.abs(delta).toFixed(0),
+                  month: monthLabel(addMonths(month, -1), { month: 'long' }),
+                })}
           </p>
         </div>
         <div className="tile">
-          <p className="tile__label">Daily average</p>
+          <p className="tile__label">{t('Daily average')}</p>
           <p className="tile__value">{money(data.total / Math.max(1, data.elapsed))}</p>
-          <p className="tile__hint">over {data.elapsed} days</p>
+          <p className="tile__hint">{t('over {n} days', { n: data.elapsed })}</p>
         </div>
         <div className="tile">
-          <p className="tile__label">Budget used</p>
+          <p className="tile__label">{t('Budget used')}</p>
           <p className="tile__value">{data.summary?.budget ? `${Math.round(data.summary.usage * 100)}%` : '—'}</p>
-          <p className="tile__hint">of {money(data.summary?.budget || 0)}</p>
+          <p className="tile__hint">{t('of {amount}', { amount: money(data.summary?.budget || 0) })}</p>
         </div>
         <div className="tile">
-          <p className="tile__label">Biggest spend</p>
+          <p className="tile__label">{t('Biggest spend')}</p>
           <p className="tile__value">{data.biggest ? money(data.biggest.amount) : '—'}</p>
           <p className="tile__hint">
-            {data.biggest ? `${data.biggest.note || data.biggest.category}, ${dayLabel(data.biggest.date)}` : 'no spending yet'}
+            {data.biggest ? `${data.biggest.note || catName(data.biggest.category)}, ${dayLabel(data.biggest.date)}` : t('no spending yet')}
           </p>
         </div>
       </div>
 
       {data.list.length === 0 ? (
         <div className="empty">
-          <p className="empty__title">No spending in {monthLabel(month, { month: 'long' })}</p>
-          <p>Charts appear here once there are expenses for the month.</p>
+          <p className="empty__title">{t('No spending in {month}', { month: monthLabel(month, { month: 'long' }) })}</p>
+          <p>{t('Charts appear here once there are expenses for the month.')}</p>
         </div>
       ) : (
         <>
           <section className="card section">
             <div className="section__head">
-              <h2>Day by day</h2>
+              <h2>{t('Day by day')}</h2>
               <span className="legend">
-                <span className="legend__line" /> daily budget {money(perDayBudget)}
+                <span className="legend__line" /> {t('daily budget {amount}', { amount: money(perDayBudget) })}
               </span>
             </div>
             <DailyChart daily={data.daily} perDayBudget={perDayBudget} />
@@ -89,15 +93,15 @@ export default function Insights() {
 
           <section className="card section">
             <div className="section__head">
-              <h2>Where it went</h2>
+              <h2>{t('Where it went')}</h2>
             </div>
             <table className="cat-table">
-              <caption className="sr-only">Spending by category</caption>
+              <caption className="sr-only">{t('Spending by category')}</caption>
               <thead className="sr-only">
                 <tr>
-                  <th>Category</th>
-                  <th>Amount</th>
-                  <th>Share</th>
+                  <th>{t('Category')}</th>
+                  <th>{t('Amount')}</th>
+                  <th>{t('Share')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,9 +116,9 @@ export default function Insights() {
                             {meta.emoji}
                           </span>
                           <span>
-                            {c.name}
+                            {catName(c.name)}
                             <span className="cat-table__count">
-                              {c.count} {c.count === 1 ? 'expense' : 'expenses'}
+                              {tn(c.count, '{n} expense', '{n} expenses')}
                             </span>
                           </span>
                         </span>
@@ -149,7 +153,7 @@ function DailyChart({ daily, perDayBudget }) {
 
   return (
     <div className="chart" onMouseLeave={() => setHover(null)}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Spending per day this month">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Spending per day this month')}>
         <line x1={pad.l} x2={W - pad.r} y1={base} y2={base} className="chart__axis" />
         {daily.map((d, i) => {
           const h = base - y(d.total);
@@ -189,12 +193,12 @@ function DailyChart({ daily, perDayBudget }) {
       </svg>
       {active && (
         <div className="chart__tip" style={{ left: `${((hover + 0.5) / daily.length) * 100}%` }}>
-          <strong>{active.total ? money(active.total) : 'Nothing'}</strong>
+          <strong>{active.total ? money(active.total) : t('Nothing')}</strong>
           <span>{dayLabel(active.date)}</span>
         </div>
       )}
       <p className="sr-only">
-        Highest day {compact(Math.max(...daily.map((d) => d.total)))}.
+        {compact(Math.max(...daily.map((d) => d.total)))}
       </p>
     </div>
   );

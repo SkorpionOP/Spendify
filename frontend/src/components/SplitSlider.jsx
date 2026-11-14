@@ -1,4 +1,5 @@
 import { money } from '../lib/format';
+import { t } from '../lib/i18n';
 
 /** One slider that splits income into "to spend" and "to save". */
 export function SplitSlider({ value, onChange, income }) {
@@ -7,12 +8,12 @@ export function SplitSlider({ value, onChange, income }) {
       <div className="split__legend">
         <div>
           <span className="split__dot split__dot--spend" />
-          To spend <strong>{value}%</strong>
+          {t('To spend')} <strong>{value}%</strong>
           {income > 0 && <span className="split__amt">{money(income * (value / 100))}</span>}
         </div>
         <div>
           <span className="split__dot split__dot--save" />
-          To save <strong>{100 - value}%</strong>
+          {t('To save')} <strong>{100 - value}%</strong>
           {income > 0 && <span className="split__amt">{money(income * ((100 - value) / 100))}</span>}
         </div>
       </div>
@@ -25,8 +26,8 @@ export function SplitSlider({ value, onChange, income }) {
         onChange={(e) => onChange(Number(e.target.value))}
         className="split__range"
         style={{ '--p': `${((value - 10) / 90) * 100}%` }}
-        aria-label="Share of income to spend"
-        aria-valuetext={`${value}% to spend, ${100 - value}% to save`}
+        aria-label={t('Share of income to spend')}
+        aria-valuetext={t('{a}% to spend, {b}% to save', { a: value, b: 100 - value })}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { currentMonth, dayLabel, daysInMonth, monthKey, parseISO, today } from '../lib/dates';
 import { compact, money } from '../lib/format';
+import { t } from '../lib/i18n';
 import { MonthSwitcher } from '../components/MonthSwitcher';
 import { ExpenseRow } from '../components/ExpenseList';
 import { useExpenseSheet } from '../components/ExpenseSheet';
@@ -35,33 +36,32 @@ export default function CalendarPage() {
   };
 
   const dayList = byDay[selected] || [];
-  const t = today();
+  const todayIso = today();
 
   return (
     <div className="page">
       <header className="page__head">
-        <h1>Calendar</h1>
+        <h1>{t('Calendar')}</h1>
         <MonthSwitcher value={month} onChange={changeMonth} />
       </header>
 
       <div className="card cal">
-        <div className="cal__grid" role="grid" aria-label="Spending by day">
+        <div className="cal__grid" role="grid" aria-label={t('Spending by day')}>
           {WEEKDAYS.map((w) => (
             <div key={w} className="cal__wd" role="columnheader">
-              {w.slice(0, 1)}
-              <span className="sr-only">{w.slice(1)}</span>
+              {t(w)}
             </div>
           ))}
           {cells.map((d, i) =>
             d ? (
               <button
                 key={d}
-                className={`cal__day ${d === selected ? 'is-selected' : ''} ${d === t ? 'is-today' : ''}`}
+                className={`cal__day ${d === selected ? 'is-selected' : ''} ${d === todayIso ? 'is-today' : ''}`}
                 style={{ '--heat': totals[d] ? 0.15 + 0.85 * (totals[d] / max) : 0 }}
                 onClick={() => setSelected(d)}
-                disabled={d > t}
+                disabled={d > todayIso}
                 aria-pressed={d === selected}
-                aria-label={`${dayLabel(d)}${totals[d] ? `, ${money(totals[d])}` : ', nothing spent'}`}
+                aria-label={`${dayLabel(d)}, ${totals[d] ? money(totals[d]) : t('nothing spent')}`}
               >
                 <span className="cal__num">{Number(d.slice(8))}</span>
                 {totals[d] ? <span className="cal__amt">{compact(totals[d])}</span> : null}
@@ -72,7 +72,7 @@ export default function CalendarPage() {
           )}
         </div>
         <p className="cal__foot">
-          {money(monthTotal)} spent across {Object.keys(totals).length} days. Darker days cost more.
+          {t('{amount} spent across {n} days. Darker days cost more.', { amount: money(monthTotal), n: Object.keys(totals).length })}
         </p>
       </div>
 
@@ -89,11 +89,11 @@ export default function CalendarPage() {
           </ul>
         ) : (
           <div className="empty empty--small">
-            <p>No spending on this day.</p>
+            <p>{t('No spending on this day.')}</p>
           </div>
         )}
         <button className="btn btn--ghost btn--block" onClick={() => open({ date: selected })}>
-          <Plus size={18} /> Add an expense on this day
+          <Plus size={18} /> {t('Add an expense on this day')}
         </button>
       </section>
     </div>

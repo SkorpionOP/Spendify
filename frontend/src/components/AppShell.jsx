@@ -1,6 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { CalendarDays, Home, ListOrdered, PieChart, Plus, Settings } from 'lucide-react';
+import { t } from '../lib/i18n';
 import { useExpenseSheet } from './ExpenseSheet';
+import { LangSwitch } from './LangSwitch';
 
 const NAV = [
   { to: '/', label: 'Home', icon: Home, end: true },
@@ -27,15 +29,18 @@ export function AppShell({ children }) {
           Spendify
         </div>
         <button className="btn btn--primary rail__add" onClick={() => open()}>
-          <Plus size={18} strokeWidth={2.5} /> Add expense
+          <Plus size={18} strokeWidth={2.5} /> {t('Add expense')}
         </button>
         <nav className="rail__nav">
           {[...NAV, { to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className="rail__link">
-              <Icon size={20} /> {label}
+              <Icon size={20} /> {t(label)}
             </NavLink>
           ))}
         </nav>
+        <div className="rail__foot">
+          <LangSwitch />
+        </div>
       </aside>
 
       <main className="main" key={pathname}>
@@ -46,16 +51,16 @@ export function AppShell({ children }) {
         {NAV.slice(0, 2).map(({ to, label, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className="tabbar__link">
             <Icon size={22} />
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </NavLink>
         ))}
-        <button className="tabbar__add" onClick={() => open()} aria-label="Add expense">
+        <button className="tabbar__add" onClick={() => open()} aria-label={t('Add expense')}>
           <Plus size={26} strokeWidth={2.5} />
         </button>
         {NAV.slice(2).map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className="tabbar__link">
             <Icon size={22} />
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </NavLink>
         ))}
       </nav>

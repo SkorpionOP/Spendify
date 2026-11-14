@@ -7,30 +7,33 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'icon-192x192.png'],
+      includeAssets: ['icon.svg', 'favicon.svg', 'apple-touch-icon.png'],
       manifest: {
+        id: '/',
         name: 'Spendify',
         short_name: 'Spendify',
         description: 'A private money diary. Your data stays on your phone.',
         start_url: '/',
         scope: '/',
-        theme_color: '#f4f1fa',
-        background_color: '#f4f1fa',
         display: 'standalone',
         orientation: 'portrait',
+        theme_color: '#261a3b',
+        background_color: '#f4f1fa',
+        categories: ['finance', 'productivity'],
         icons: [
+          { src: '/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }
+        ],
+        shortcuts: [
           {
-            src: '/icon-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
+            name: 'Add expense',
+            short_name: 'Add',
+            url: '/?add=1',
+            icons: [{ src: '/icon-192x192.png', sizes: '192x192', type: 'image/png' }]
           },
-          {
-            src: '/icon-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
+          { name: 'History', url: '/history' }
         ]
       },
       workbox: {

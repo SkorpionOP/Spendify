@@ -23,7 +23,9 @@
 > The app no longer needs an account or a server. Everything — your plan and every expense — is saved in the browser's
 > `localStorage` on your device, and the app works fully offline as an installable PWA.
 >
-> - **Back up** from Settings → Backup (downloads a `.json` file); **restore** it on a new phone or after clearing the browser.
+> - Data is written to **localStorage and an IndexedDB mirror**, with a daily copy kept for 14 days and an extra copy before any restore or "Delete all". If one store is wiped or corrupted, the app recovers from the other on next launch. Writes never replace newer data with older data, or real data with an empty state.
+> - **Back up** from Home or Settings (shares/downloads a `.json` file to Drive, WhatsApp, Files…); **restore** it on a new phone. Settings → "Go back to an earlier copy" restores any automatic copy.
+> - Installable as an app (install button on Android/desktop, step-by-step on iPhone); long-press the icon for an "Add expense" shortcut.
 > - History can export a CSV.
 > - Run it: `cd frontend && npm install && npm run dev`. Deploys as a static site (see `frontend/vercel.json`; the Vercel project Root Directory is `frontend`).
 > - The `backend/` folder is no longer used or deployed (the Python `api/` entry point was removed).

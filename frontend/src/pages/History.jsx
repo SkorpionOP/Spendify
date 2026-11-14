@@ -3,6 +3,7 @@ import { Download, Search, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { CATEGORIES } from '../lib/categories';
 import { money } from '../lib/format';
+import { catName, t, tn } from '../lib/i18n';
 import { GroupedExpenses } from '../components/ExpenseList';
 
 const PAGE = 60;
@@ -20,7 +21,11 @@ export default function History() {
     return expenses.filter(
       (e) =>
         (!cat || e.category === cat) &&
-        (!needle || e.note.toLowerCase().includes(needle) || e.category.toLowerCase().includes(needle) || String(e.amount).includes(needle))
+        (!needle ||
+          e.note.toLowerCase().includes(needle) ||
+          e.category.toLowerCase().includes(needle) ||
+          catName(e.category).toLowerCase().includes(needle) ||
+          String(e.amount).includes(needle.replace(/[.,\s]/g, '')))
     );
   }, [expenses, q, cat]);
 
@@ -28,7 +33,7 @@ export default function History() {
 
   const exportCsv = () => {
     const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
-    const rows = [['Date', 'Category', 'Note', 'Amount'], ...filtered.map((e) => [e.date, e.category, e.note, e.amount])];
+    const rows = [[t('Date'), t('Category'), t('Note'), t('Amount')], ...filtered.map((e) => [e.date, catName(e.category), e.note, e.amount])];
     const blob = new Blob([rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -40,7 +45,7 @@ export default function History() {
   return (
     <div className="page">
       <header className="page__head">
-        <h1>History</h1>
+        <h1>{t('History')}</h1>
         {expenses.length > 0 && (
           <button className="btn btn--ghost btn--sm" onClick={exportCsv}>
             <Download size={16} /> CSV
@@ -52,22 +57,22 @@ export default function History() {
         <Search size={18} aria-hidden="true" />
         <input
           type="search"
-          placeholder="Search notes, categories or amounts"
+          placeholder={t('Search notes, categories or amounts')}
           value={q}
           onChange={(e) => (setQ(e.target.value), setLimit(PAGE))}
-          aria-label="Search expenses"
+          aria-label={t('Search expenses')}
         />
         {q && (
-          <button className="icon-btn icon-btn--sm" onClick={() => setQ('')} aria-label="Clear search">
+          <button className="icon-btn icon-btn--sm" onClick={() => setQ('')} aria-label={t('Clear search')}>
             <X size={16} />
           </button>
         )}
       </div>
 
       {used.length > 1 && (
-        <div className="filter-row" role="group" aria-label="Filter by category">
+        <div className="filter-row" role="group" aria-label={t('Filter by category')}>
           <button className={`pill ${!cat ? 'is-on' : ''}`} onClick={() => setCat('')} aria-pressed={!cat}>
-            All
+            {t('All')}
           </button>
           {used.map((c) => (
             <button
@@ -76,7 +81,7 @@ export default function History() {
               onClick={() => (setCat(cat === c.name ? '' : c.name), setLimit(PAGE))}
               aria-pressed={cat === c.name}
             >
-              <span aria-hidden="true">{c.emoji}</span> {c.name}
+              <span aria-hidden="true">{c.emoji}</span> {catName(c.name)}
             </button>
           ))}
         </div>
@@ -84,22 +89,22 @@ export default function History() {
 
       {expenses.length === 0 ? (
         <div className="empty">
-          <p className="empty__title">No expenses yet</p>
-          <p>Everything you add shows up here, newest first.</p>
+          <p className="empty__title">{t('No expenses yet')}</p>
+          <p>{t('Everything you add shows up here, newest first.')}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty empty--small">
-          <p>Nothing matches. Try a different word or category.</p>
+          <p>{t('Nothing matches. Try a different word or category.')}</p>
         </div>
       ) : (
         <>
           <p className="result-line">
-            {filtered.length} {filtered.length === 1 ? 'expense' : 'expenses'}, {money(total)} in total
+            {t('{count}, {amount} in total', { count: tn(filtered.length, '{n} expense', '{n} expenses'), amount: money(total) })}
           </p>
           <GroupedExpenses expenses={filtered.slice(0, limit)} />
           {filtered.length > limit && (
             <button className="btn btn--ghost btn--block" onClick={() => setLimit(limit + PAGE)}>
-              Show more
+              {t('Show more')}
             </button>
           )}
         </>

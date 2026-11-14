@@ -1,0 +1,688 @@
+/*
+ * Tiny i18n: English + Bahasa Indonesia.
+ * `configure()` is called from the app root whenever settings change; `t()` reads the active language.
+ * Strings use {name} placeholders. Keys are short English phrases so the code stays readable.
+ */
+
+export const LANGS = [
+  { code: 'id', label: 'ID', name: 'Bahasa Indonesia', locale: 'id-ID' },
+  { code: 'en', label: 'EN', name: 'English', locale: 'en-GB' },
+];
+
+export const CURRENCIES = [
+  { code: 'IDR', name: 'Rupiah (Rp)', decimals: 0 },
+  { code: 'USD', name: 'US Dollar ($)', decimals: 2 },
+  { code: 'SGD', name: 'Singapore Dollar (S$)', decimals: 2 },
+  { code: 'MYR', name: 'Ringgit (RM)', decimals: 2 },
+  { code: 'EUR', name: 'Euro (€)', decimals: 2 },
+  { code: 'AUD', name: 'Australian Dollar (A$)', decimals: 2 },
+  { code: 'INR', name: 'Indian Rupee (₹)', decimals: 2 },
+];
+
+// Built for an Indonesian user: default to Bahasa Indonesia; the ID/EN switch is always one tap away.
+export const defaultLang = () => 'id';
+
+const cfg = { lang: 'id', locale: 'id-ID', currency: 'IDR' };
+
+export const configure = ({ lang, currency } = {}) => {
+  cfg.lang = LANGS.some((l) => l.code === lang) ? lang : 'id';
+  cfg.locale = LANGS.find((l) => l.code === cfg.lang).locale;
+  cfg.currency = CURRENCIES.some((c) => c.code === currency) ? currency : 'IDR';
+};
+
+export const getConfig = () => cfg;
+
+export const t = (key, vars) => {
+  const dict = DICT[cfg.lang] || DICT.en;
+  let s = dict[key] ?? DICT.en[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, v);
+  return s;
+};
+
+/** Pick singular/plural key: t2(n, 'expense', 'expenses') — Indonesian has no plural, so both map the same. */
+export const tn = (n, one, many, vars) => t(n === 1 ? one : many, { n, ...vars });
+
+export const ordinal = (n) => {
+  if (cfg.lang === 'id') return `tanggal ${n}`;
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `the ${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+};
+
+const CAT_ID = {
+  Food: 'Makanan',
+  Snacks: 'Jajan',
+  Groceries: 'Belanja dapur',
+  'Dining Out': 'Makan di luar',
+  Coffee: 'Kopi',
+  Transport: 'Transportasi',
+  Shopping: 'Belanja',
+  Beauty: 'Kecantikan',
+  Bills: 'Tagihan',
+  Phone: 'Pulsa & data',
+  Rent: 'Kos / sewa',
+  Subscriptions: 'Langganan',
+  Health: 'Kesehatan',
+  Fitness: 'Olahraga',
+  Entertainment: 'Hiburan',
+  Travel: 'Liburan',
+  Education: 'Pendidikan',
+  Gifts: 'Hadiah',
+  Charity: 'Sedekah & donasi',
+  Family: 'Keluarga',
+  Pets: 'Hewan peliharaan',
+  Investment: 'Investasi',
+  Games: 'Game',
+  Others: 'Lainnya',
+};
+const CAT_EN = { Snacks: 'Snacks', Phone: 'Phone & data', Charity: 'Charity', Family: 'Family', Coffee: 'Coffee' };
+
+/** Display name for a stored category key. */
+export const catName = (key) => (cfg.lang === 'id' ? CAT_ID[key] || key : CAT_EN[key] || key);
+
+const DICT = {
+  en: {
+    // nav
+    Home: 'Home',
+    Calendar: 'Calendar',
+    Insights: 'Insights',
+    History: 'History',
+    Settings: 'Settings',
+    'Add expense': 'Add expense',
+    'Back to home': 'Back to home',
+    Close: 'Close',
+    Language: 'Language',
+
+    // greetings & dates
+    'Still up': 'Still up',
+    'Good morning': 'Good morning',
+    'Good afternoon': 'Good afternoon',
+    'Good evening': 'Good evening',
+    Today: 'Today',
+    Yesterday: 'Yesterday',
+    today: 'today',
+    'Previous month': 'Previous month',
+    'Next month': 'Next month',
+
+    // home
+    '{month} budget': '{month} budget',
+    'left to spend': 'left to spend',
+    'Budget remaining': 'Budget remaining',
+    '{amount} spent': '{amount} spent',
+    'of {amount}': 'of {amount}',
+    'Set your income in Settings to see what’s left.': 'Set your income in Settings to see what’s left.',
+    '{amount} has come out of savings this month.': '{amount} has come out of savings this month.',
+    '{amount} under where you’d expect by today.': '{amount} under where you’d expect by today.',
+    '{amount} ahead of pace. Slow down a little to make it to the 1st.':
+      '{amount} ahead of pace. Slow down a little to make it to the 1st.',
+    'About {amount} a day for the next {n} day.': 'About {amount} a day for the rest of today.',
+    'About {amount} a day for the next {n} days.': 'About {amount} a day for the next {n} days.',
+    Savings: 'Savings',
+    'incl. {amount} carried over': 'incl. {amount} carried over',
+    'unused budget rolls in here': 'unused budget rolls in here',
+    'nothing yet': 'nothing yet',
+    '{n} expense': '{n} expense',
+    '{n} expenses': '{n} expenses',
+    'Most on': 'Most on',
+    'no spending yet': 'no spending yet',
+    'Add money': 'Add money',
+    'Bonus, gift or refund': 'Bonus, gift or refund',
+    'Monthly repeats': 'Monthly repeats',
+    'Rent, subscriptions, bills': 'Rent, subscriptions, bills',
+    'Next: {name}, {date}': 'Next: {name}, {date}',
+    Recent: 'Recent',
+    'See all': 'See all',
+    'Nothing logged yet': 'Nothing logged yet',
+    'Add what you spend as you go. It takes about five seconds.': 'Add what you spend as you go. It takes about five seconds.',
+    'Add your first expense': 'Add your first expense',
+
+    // expense sheet
+    'New expense': 'New expense',
+    'Edit expense': 'Edit expense',
+    'Repeat a frequent expense': 'Repeat a frequent expense',
+    Amount: 'Amount',
+    Category: 'Category',
+    Note: 'Note',
+    'What was it for?': 'What was it for?',
+    Date: 'Date',
+    'Repeat every month on {day}': 'Repeat every month on {day}',
+    'Added automatically from a monthly repeat. Manage repeats from Home.':
+      'Added automatically from a monthly repeat. Manage repeats from Home.',
+    Delete: 'Delete',
+    'Save changes': 'Save changes',
+    'Add {amount}': 'Add {amount}',
+    'Enter an amount above zero.': 'Enter an amount above zero.',
+    'Use numbers only. You can add amounts with +, like 15000+8000.':
+      'Use numbers only. You can add amounts with +, like 15000+8000.',
+    'Changes saved': 'Changes saved',
+    'Added. {amount} came out of savings.': 'Added. {amount} came out of savings.',
+    'Added {amount} for {category}': 'Added {amount} for {category}',
+    ', repeats monthly': ', repeats monthly',
+    'Deleted {amount} {category}': 'Deleted {amount} {category}',
+    Undo: 'Undo',
+    'Edit {category} {amount}': 'Edit {category} {amount}',
+
+    // calendar
+    'Spending by day': 'Spending by day',
+    'nothing spent': 'nothing spent',
+    '{amount} spent across {n} days. Darker days cost more.': '{amount} spent across {n} days. Darker days cost more.',
+    'No spending on this day.': 'No spending on this day.',
+    'Add an expense on this day': 'Add an expense on this day',
+    Mon: 'Mon',
+    Tue: 'Tue',
+    Wed: 'Wed',
+    Thu: 'Thu',
+    Fri: 'Fri',
+    Sat: 'Sat',
+    Sun: 'Sun',
+
+    // insights
+    Spent: 'Spent',
+    'nothing logged in {month}': 'nothing logged in {month}',
+    '{pct}% more than {month}': '{pct}% more than {month}',
+    '{pct}% less than {month}': '{pct}% less than {month}',
+    'Daily average': 'Daily average',
+    'over {n} days': 'over {n} days',
+    'Budget used': 'Budget used',
+    'Biggest spend': 'Biggest spend',
+    'No spending in {month}': 'No spending in {month}',
+    'Charts appear here once there are expenses for the month.': 'Charts appear here once there are expenses for the month.',
+    'Day by day': 'Day by day',
+    'daily budget {amount}': 'daily budget {amount}',
+    'Where it went': 'Where it went',
+    'Spending by category': 'Spending by category',
+    Share: 'Share',
+    'Spending per day this month': 'Spending per day this month',
+    Nothing: 'Nothing',
+
+    // history
+    'Search notes, categories or amounts': 'Search notes, categories or amounts',
+    'Search expenses': 'Search expenses',
+    'Clear search': 'Clear search',
+    'Filter by category': 'Filter by category',
+    All: 'All',
+    'No expenses yet': 'No expenses yet',
+    'Everything you add shows up here, newest first.': 'Everything you add shows up here, newest first.',
+    'Nothing matches. Try a different word or category.': 'Nothing matches. Try a different word or category.',
+    '{count}, {amount} in total': '{count}, {amount} in total',
+    'Show more': 'Show more',
+
+    // onboarding
+    'Know what’s left, every day of the month.': 'Know what’s left, every day of the month.',
+    'Spendify keeps everything on this phone. There’s no account and no password, and nothing is sent to a server.':
+      'Spendify keeps everything on this phone. There’s no account and no password, and nothing is sent to a server.',
+    'What should we call you?': 'What should we call you?',
+    'Monthly income': 'Monthly income',
+    'Start tracking': 'Start tracking',
+    '{spend} a month to spend, {save} to save. You can change this any time.':
+      '{spend} a month to spend, {save} to save. You can change this any time.',
+    'You can change these any time in Settings.': 'You can change these any time in Settings.',
+    'Restore from a backup file': 'Restore from a backup file',
+    'Add your name so the app can greet you.': 'Add your name so the app can greet you.',
+    'Enter your monthly income to plan your budget.': 'Enter your monthly income to plan your budget.',
+    'Your earlier data is still here': 'Your earlier data is still here',
+    'A copy with {n} expenses from {date} was found on this device.': 'A copy with {n} expenses from {date} was found on this device.',
+    'Restore it': 'Restore it',
+    Currency: 'Currency',
+
+    // split slider
+    'To spend': 'To spend',
+    'To save': 'To save',
+    'Share of income to spend': 'Share of income to spend',
+    '{a}% to spend, {b}% to save': '{a}% to spend, {b}% to save',
+
+    // money tools
+    'Got paid extra, a gift, or a refund? Put it where you want it.': 'Got paid extra, a gift, or a refund? Put it where you want it.',
+    'Add to budget': 'Add to budget',
+    'Add to savings': 'Add to savings',
+    'More to spend this month ({amount} now)': 'More to spend this month ({amount} now)',
+    'Put it away ({amount} now)': 'Put it away ({amount} now)',
+    'Enter an amount to add.': 'Enter an amount to add.',
+    'Added {amount} to this month’s budget': 'Added {amount} to this month’s budget',
+    'Added {amount} to savings': 'Added {amount} to savings',
+    'Rent, subscriptions, phone credit: added for you automatically on the same day each month.':
+      'Rent, subscriptions, phone credit: added for you automatically on the same day each month.',
+    '{amount} a month in total.': '{amount} a month in total.',
+    '{amount} on {day}, next {date}': '{amount} on {day}, next {date}',
+    'Stop repeating {name}': 'Stop repeating {name}',
+    'Stop adding {name} every month? Expenses already added stay.': 'Stop adding {name} every month? Expenses already added stay.',
+    'Repeat stopped': 'Repeat stopped',
+    Name: 'Name',
+    'e.g. Netflix': 'e.g. Netflix',
+    'Day of month': 'Day of month',
+    'Today is the day, so the first one is added right away.': 'Today is the day, so the first one is added right away.',
+    'This month’s date has passed. The first one is added in {month}.': 'This month’s date has passed. The first one is added in {month}.',
+    'The first one is added later this month.': 'The first one is added later this month.',
+    Cancel: 'Cancel',
+    'Add repeat': 'Add repeat',
+    'Add a monthly repeat': 'Add a monthly repeat',
+    'Added {name} for today. It repeats on {day} of each month.': 'Added {name} for today. It repeats on {day} of each month.',
+    '{name} will be added on {day} of each month': '{name} will be added on {day} of each month',
+
+    // nudges
+    'Spendify is installed on this device.': 'Spendify is installed on this device.',
+    'Installed. Open Spendify from your home screen.': 'Installed. Open Spendify from your home screen.',
+    'Install app': 'Install app',
+    'Tap the Share button in Safari’s toolbar.': 'Tap the <b>Share</b> button {icon} in Safari’s toolbar.',
+    'Scroll down and tap Add to Home Screen.': 'Scroll down and tap <b>Add to Home Screen</b>.',
+    'Tap Add.': 'Tap <b>Add</b>.',
+    'Tap the Share button (or open this page in Safari).': 'Tap the <b>Share</b> button {icon} (or open this page in Safari).',
+    'Tap Add to Home Screen, then Add.': 'Tap <b>Add to Home Screen</b>, then <b>Add</b>.',
+    'Open your browser’s menu.': 'Open your browser’s menu (<b>⋮</b> or <b>⋯</b>).',
+    'Tap Install app or Add to Home screen.': 'Tap <b>Install app</b> or <b>Add to Home screen</b>.',
+    'Put Spendify on your home screen': 'Put Spendify on your home screen',
+    'It opens like a normal app, works offline, and your phone is less likely to clear its data.':
+      'It opens like a normal app, works offline, and your phone is less likely to clear its data.',
+    'Hide for now': 'Hide for now',
+    'Remind me in 3 days': 'Remind me in 3 days',
+    'Time for a backup': 'Time for a backup',
+    'Keep a copy somewhere safe': 'Keep a copy somewhere safe',
+    '{n} expenses live only on this phone.': '{n} expenses live only on this phone.',
+    'Save a copy to Google Drive, WhatsApp or Files.': 'Save a copy to Google Drive, WhatsApp or Files.',
+    'Download a copy to keep somewhere safe.': 'Download a copy to keep somewhere safe.',
+    'Save a backup': 'Save a backup',
+    'Download backup': 'Download backup',
+    'Backup saved': 'Backup saved',
+
+    // settings
+    'Install the app': 'Install the app',
+    'Adds Spendify to your home screen. It opens full screen, works offline, and your data is safer from automatic clean-ups.':
+      'Adds Spendify to your home screen. It opens full screen, works offline, and your data is safer from automatic clean-ups.',
+    You: 'You',
+    Appearance: 'Appearance',
+    Automatic: 'Automatic',
+    Light: 'Light',
+    Dark: 'Dark',
+    'Name saved': 'Name saved',
+    'Monthly plan': 'Monthly plan',
+    'Changes apply from this month. Earlier months keep the plan they had.':
+      'Changes apply from this month. Earlier months keep the plan they had.',
+    'Save plan': 'Save plan',
+    'Enter an income above zero.': 'Enter an income above zero.',
+    'Budget updated for this month onward': 'Budget updated for this month onward',
+    'Extra money this month': 'Extra money this month',
+    'Your data': 'Your data',
+    'Protected: this browser won’t clear Spendify to free up space.': 'Protected: this browser won’t clear Spendify to free up space.',
+    'Not yet protected from automatic clean-up.': 'Not yet protected from automatic clean-up.',
+    'Protect now': 'Protect now',
+    'Storage protected': 'Storage protected',
+    'Your browser decides this on its own. Installing the app usually helps.':
+      'Your browser decides this on its own. Installing the app usually helps.',
+    'Saved twice on this device, with a daily copy for the last 14 days.':
+      'Saved twice on this device, with a daily copy for the last 14 days.',
+    'Last backup file: {when}.': 'Last backup file: {when}.',
+    never: 'never',
+    yesterday: 'yesterday',
+    '{n} days ago': '{n} days ago',
+    'A backup file is the only thing that survives losing or resetting this phone. Save one now and then to Google Drive, WhatsApp or Files.':
+      'A backup file is the only thing that survives losing or resetting this phone. Save one now and then to Google Drive, WhatsApp or Files.',
+    'Save backup': 'Save backup',
+    'Restore from file': 'Restore from file',
+    'Download the file instead': 'Download the file instead',
+    'Hide earlier copies': 'Hide earlier copies',
+    'Go back to an earlier copy': 'Go back to an earlier copy',
+    'No copies yet. One is saved each day you use the app.': 'No copies yet. One is saved each day you use the app.',
+    Restore: 'Restore',
+    'Replace what’s in the app with this backup? A copy of the current data is kept, so you can switch back.':
+      'Replace what’s in the app with this backup? A copy of the current data is kept, so you can switch back.',
+    'Backup restored': 'Backup restored',
+    'Go back to the copy from {when} ({n} expenses)? Your current data is kept as another copy.':
+      'Go back to the copy from {when} ({n} expenses)? Your current data is kept as another copy.',
+    'Earlier copy restored': 'Earlier copy restored',
+    'This file is not a Spendify backup.': 'This file is not a Spendify backup.',
+    'That file could not be read.': 'That file could not be read.',
+    'That copy is no longer available.': 'That copy is no longer available.',
+    'Before restoring a backup file': 'before restoring a backup file',
+    'Before restoring an earlier copy': 'before restoring an earlier copy',
+    'Before deleting all data': 'before deleting all data',
+    'Start over': 'Start over',
+    'Clears every expense and your plan. A copy is kept under “Go back to an earlier copy” in case you change your mind.':
+      'Clears every expense and your plan. A copy is kept under “Go back to an earlier copy” in case you change your mind.',
+    'Type “delete” to confirm': 'Type “delete” to confirm',
+    'delete-word': 'delete',
+    'Delete all data': 'Delete all data',
+    'All data cleared': 'All data cleared',
+    'Spendify works offline. Nothing you enter ever leaves this device unless you save a backup.':
+      'Spendify works offline. Nothing you enter ever leaves this device unless you save a backup.',
+    'Changing the currency only changes the symbol. Amounts you already entered stay the same numbers.':
+      'Changing the currency only changes the symbol. Amounts you already entered stay the same numbers.',
+
+    // recovery
+    'Your saved data was damaged, so it was restored from the automatic copy on this device.':
+      'Your saved data was damaged, so it was restored from the automatic copy on this device.',
+    'Your data was restored from the automatic copy on this device.': 'Your data was restored from the automatic copy on this device.',
+    Loading: 'Loading',
+  },
+
+  id: {
+    Home: 'Beranda',
+    Calendar: 'Kalender',
+    Insights: 'Ringkasan',
+    History: 'Riwayat',
+    Settings: 'Pengaturan',
+    'Add expense': 'Catat pengeluaran',
+    'Back to home': 'Kembali ke beranda',
+    Close: 'Tutup',
+    Language: 'Bahasa',
+
+    'Still up': 'Masih melek',
+    'Good morning': 'Selamat pagi',
+    'Good afternoon': 'Selamat siang',
+    'Good evening': 'Selamat malam',
+    Today: 'Hari ini',
+    Yesterday: 'Kemarin',
+    today: 'hari ini',
+    'Previous month': 'Bulan sebelumnya',
+    'Next month': 'Bulan berikutnya',
+
+    '{month} budget': 'Anggaran {month}',
+    'left to spend': 'sisa untuk dibelanjakan',
+    'Budget remaining': 'Sisa anggaran',
+    '{amount} spent': '{amount} terpakai',
+    'of {amount}': 'dari {amount}',
+    'Set your income in Settings to see what’s left.': 'Isi pemasukanmu di Pengaturan untuk melihat sisanya.',
+    '{amount} has come out of savings this month.': '{amount} sudah terambil dari tabungan bulan ini.',
+    '{amount} under where you’d expect by today.': 'Lebih hemat {amount} dari perkiraan sampai hari ini. Mantap!',
+    '{amount} ahead of pace. Slow down a little to make it to the 1st.':
+      'Lebih boros {amount} dari perkiraan. Pelan-pelan dulu ya, biar cukup sampai tanggal 1.',
+    'About {amount} a day for the next {n} day.': 'Sekitar {amount} untuk sisa hari ini.',
+    'About {amount} a day for the next {n} days.': 'Sekitar {amount} per hari untuk {n} hari ke depan.',
+    Savings: 'Tabungan',
+    'incl. {amount} carried over': 'termasuk {amount} sisa bulan lalu',
+    'unused budget rolls in here': 'sisa anggaran masuk ke sini',
+    'nothing yet': 'belum ada',
+    '{n} expense': '{n} pengeluaran',
+    '{n} expenses': '{n} pengeluaran',
+    'Most on': 'Paling banyak',
+    'no spending yet': 'belum ada pengeluaran',
+    'Add money': 'Tambah uang',
+    'Bonus, gift or refund': 'Bonus, hadiah, atau refund',
+    'Monthly repeats': 'Rutin bulanan',
+    'Rent, subscriptions, bills': 'Kos, langganan, tagihan',
+    'Next: {name}, {date}': 'Berikutnya: {name}, {date}',
+    Recent: 'Terbaru',
+    'See all': 'Lihat semua',
+    'Nothing logged yet': 'Belum ada catatan',
+    'Add what you spend as you go. It takes about five seconds.': 'Catat setiap kali belanja. Cuma butuh lima detik.',
+    'Add your first expense': 'Catat pengeluaran pertama',
+
+    'New expense': 'Pengeluaran baru',
+    'Edit expense': 'Ubah pengeluaran',
+    'Repeat a frequent expense': 'Ulangi pengeluaran yang sering',
+    Amount: 'Jumlah',
+    Category: 'Kategori',
+    Note: 'Catatan',
+    'What was it for?': 'Untuk apa?',
+    Date: 'Tanggal',
+    'Repeat every month on {day}': 'Ulangi tiap bulan, {day}',
+    'Added automatically from a monthly repeat. Manage repeats from Home.':
+      'Dicatat otomatis dari rutin bulanan. Atur rutin bulanan dari Beranda.',
+    Delete: 'Hapus',
+    'Save changes': 'Simpan perubahan',
+    'Add {amount}': 'Catat {amount}',
+    'Enter an amount above zero.': 'Masukkan jumlah lebih dari nol.',
+    'Use numbers only. You can add amounts with +, like 15000+8000.':
+      'Pakai angka saja. Bisa dijumlah pakai +, contoh 15000+8000.',
+    'Changes saved': 'Perubahan disimpan',
+    'Added. {amount} came out of savings.': 'Tercatat. {amount} diambil dari tabungan.',
+    'Added {amount} for {category}': 'Tercatat {amount} untuk {category}',
+    ', repeats monthly': ', diulang tiap bulan',
+    'Deleted {amount} {category}': '{amount} {category} dihapus',
+    Undo: 'Batalkan',
+    'Edit {category} {amount}': 'Ubah {category} {amount}',
+
+    'Spending by day': 'Pengeluaran per hari',
+    'nothing spent': 'tidak ada pengeluaran',
+    '{amount} spent across {n} days. Darker days cost more.': '{amount} terpakai dalam {n} hari. Makin gelap, makin banyak.',
+    'No spending on this day.': 'Tidak ada pengeluaran hari ini.',
+    'Add an expense on this day': 'Catat pengeluaran di tanggal ini',
+    Mon: 'Sen',
+    Tue: 'Sel',
+    Wed: 'Rab',
+    Thu: 'Kam',
+    Fri: 'Jum',
+    Sat: 'Sab',
+    Sun: 'Min',
+
+    Spent: 'Terpakai',
+    'nothing logged in {month}': 'tidak ada catatan di {month}',
+    '{pct}% more than {month}': '{pct}% lebih banyak dari {month}',
+    '{pct}% less than {month}': '{pct}% lebih sedikit dari {month}',
+    'Daily average': 'Rata-rata harian',
+    'over {n} days': 'selama {n} hari',
+    'Budget used': 'Anggaran terpakai',
+    'Biggest spend': 'Pengeluaran terbesar',
+    'No spending in {month}': 'Tidak ada pengeluaran di {month}',
+    'Charts appear here once there are expenses for the month.': 'Grafik akan muncul setelah ada pengeluaran bulan ini.',
+    'Day by day': 'Per hari',
+    'daily budget {amount}': 'jatah harian {amount}',
+    'Where it went': 'Larinya ke mana',
+    'Spending by category': 'Pengeluaran per kategori',
+    Share: 'Porsi',
+    'Spending per day this month': 'Pengeluaran per hari bulan ini',
+    Nothing: 'Tidak ada',
+
+    'Search notes, categories or amounts': 'Cari catatan, kategori, atau jumlah',
+    'Search expenses': 'Cari pengeluaran',
+    'Clear search': 'Hapus pencarian',
+    'Filter by category': 'Saring per kategori',
+    All: 'Semua',
+    'No expenses yet': 'Belum ada pengeluaran',
+    'Everything you add shows up here, newest first.': 'Semua yang kamu catat muncul di sini, dari yang terbaru.',
+    'Nothing matches. Try a different word or category.': 'Tidak ada yang cocok. Coba kata atau kategori lain.',
+    '{count}, {amount} in total': '{count}, total {amount}',
+    'Show more': 'Tampilkan lebih banyak',
+
+    'Know what’s left, every day of the month.': 'Tahu sisa uangmu, setiap hari.',
+    'Spendify keeps everything on this phone. There’s no account and no password, and nothing is sent to a server.':
+      'Semua data tersimpan di HP ini. Tanpa akun, tanpa kata sandi, dan tidak ada yang dikirim ke server.',
+    'What should we call you?': 'Mau dipanggil siapa?',
+    'Monthly income': 'Pemasukan per bulan',
+    'Start tracking': 'Mulai mencatat',
+    '{spend} a month to spend, {save} to save. You can change this any time.':
+      '{spend} sebulan untuk belanja, {save} untuk ditabung. Bisa diubah kapan saja.',
+    'You can change these any time in Settings.': 'Bisa diubah kapan saja di Pengaturan.',
+    'Restore from a backup file': 'Pulihkan dari file cadangan',
+    'Add your name so the app can greet you.': 'Isi namamu dulu ya.',
+    'Enter your monthly income to plan your budget.': 'Isi pemasukan bulananmu untuk mengatur anggaran.',
+    'Your earlier data is still here': 'Data lamamu masih ada',
+    'A copy with {n} expenses from {date} was found on this device.': 'Ada salinan berisi {n} pengeluaran dari {date} di HP ini.',
+    'Restore it': 'Pulihkan',
+    Currency: 'Mata uang',
+
+    'To spend': 'Untuk belanja',
+    'To save': 'Untuk ditabung',
+    'Share of income to spend': 'Porsi pemasukan untuk belanja',
+    '{a}% to spend, {b}% to save': '{a}% untuk belanja, {b}% untuk ditabung',
+
+    'Got paid extra, a gift, or a refund? Put it where you want it.':
+      'Dapat bonus, hadiah, atau refund? Taruh di mana kamu mau.',
+    'Add to budget': 'Tambah ke anggaran',
+    'Add to savings': 'Tambah ke tabungan',
+    'More to spend this month ({amount} now)': 'Jatah belanja bulan ini bertambah (sekarang {amount})',
+    'Put it away ({amount} now)': 'Simpan untuk nanti (sekarang {amount})',
+    'Enter an amount to add.': 'Masukkan jumlahnya dulu.',
+    'Added {amount} to this month’s budget': '{amount} ditambahkan ke anggaran bulan ini',
+    'Added {amount} to savings': '{amount} ditambahkan ke tabungan',
+    'Rent, subscriptions, phone credit: added for you automatically on the same day each month.':
+      'Kos, langganan, pulsa: dicatat otomatis di tanggal yang sama setiap bulan.',
+    '{amount} a month in total.': 'Total {amount} per bulan.',
+    '{amount} on {day}, next {date}': '{amount} setiap {day}, berikutnya {date}',
+    'Stop repeating {name}': 'Hentikan {name}',
+    'Stop adding {name} every month? Expenses already added stay.':
+      'Berhenti mencatat {name} tiap bulan? Catatan yang sudah ada tetap tersimpan.',
+    'Repeat stopped': 'Rutin dihentikan',
+    Name: 'Nama',
+    'e.g. Netflix': 'mis. Netflix',
+    'Day of month': 'Tanggal',
+    'Today is the day, so the first one is added right away.': 'Tanggalnya hari ini, jadi langsung dicatat sekarang.',
+    'This month’s date has passed. The first one is added in {month}.':
+      'Tanggal bulan ini sudah lewat. Mulai dicatat bulan {month}.',
+    'The first one is added later this month.': 'Mulai dicatat nanti bulan ini.',
+    Cancel: 'Batal',
+    'Add repeat': 'Simpan rutin',
+    'Add a monthly repeat': 'Tambah rutin bulanan',
+    'Added {name} for today. It repeats on {day} of each month.': '{name} dicatat untuk hari ini. Diulang setiap {day}.',
+    '{name} will be added on {day} of each month': '{name} akan dicatat setiap {day}',
+
+    'Spendify is installed on this device.': 'Spendify sudah terpasang di HP ini.',
+    'Installed. Open Spendify from your home screen.': 'Terpasang! Buka Spendify dari layar utama.',
+    'Install app': 'Pasang aplikasi',
+    'Tap the Share button in Safari’s toolbar.': 'Ketuk tombol <b>Bagikan</b> {icon} di Safari.',
+    'Scroll down and tap Add to Home Screen.': 'Gulir ke bawah, ketuk <b>Tambah ke Layar Utama</b>.',
+    'Tap Add.': 'Ketuk <b>Tambah</b>.',
+    'Tap the Share button (or open this page in Safari).': 'Ketuk tombol <b>Bagikan</b> {icon} (atau buka halaman ini di Safari).',
+    'Tap Add to Home Screen, then Add.': 'Ketuk <b>Tambah ke Layar Utama</b>, lalu <b>Tambah</b>.',
+    'Open your browser’s menu.': 'Buka menu browser (<b>⋮</b> atau <b>⋯</b>).',
+    'Tap Install app or Add to Home screen.': 'Ketuk <b>Instal aplikasi</b> atau <b>Tambahkan ke layar utama</b>.',
+    'Put Spendify on your home screen': 'Pasang Spendify di layar utama',
+    'It opens like a normal app, works offline, and your phone is less likely to clear its data.':
+      'Bisa dibuka seperti aplikasi biasa, jalan tanpa internet, dan datanya lebih aman.',
+    'Hide for now': 'Sembunyikan dulu',
+    'Remind me in 3 days': 'Ingatkan 3 hari lagi',
+    'Time for a backup': 'Waktunya cadangkan data',
+    'Keep a copy somewhere safe': 'Simpan salinan di tempat aman',
+    '{n} expenses live only on this phone.': '{n} catatan hanya ada di HP ini.',
+    'Save a copy to Google Drive, WhatsApp or Files.': 'Simpan salinannya ke Google Drive, WhatsApp, atau Files.',
+    'Download a copy to keep somewhere safe.': 'Unduh salinannya dan simpan di tempat aman.',
+    'Save a backup': 'Simpan cadangan',
+    'Download backup': 'Unduh cadangan',
+    'Backup saved': 'Cadangan tersimpan',
+
+    'Install the app': 'Pasang aplikasi',
+    'Adds Spendify to your home screen. It opens full screen, works offline, and your data is safer from automatic clean-ups.':
+      'Menambahkan Spendify ke layar utama. Terbuka layar penuh, jalan tanpa internet, dan datamu lebih aman dari pembersihan otomatis.',
+    You: 'Kamu',
+    Appearance: 'Tampilan',
+    Automatic: 'Otomatis',
+    Light: 'Terang',
+    Dark: 'Gelap',
+    'Name saved': 'Nama disimpan',
+    'Monthly plan': 'Rencana bulanan',
+    'Changes apply from this month. Earlier months keep the plan they had.':
+      'Perubahan berlaku mulai bulan ini. Bulan-bulan sebelumnya tidak berubah.',
+    'Save plan': 'Simpan rencana',
+    'Enter an income above zero.': 'Masukkan pemasukan lebih dari nol.',
+    'Budget updated for this month onward': 'Anggaran diperbarui mulai bulan ini',
+    'Extra money this month': 'Uang tambahan bulan ini',
+    'Your data': 'Datamu',
+    'Protected: this browser won’t clear Spendify to free up space.':
+      'Terlindungi: browser tidak akan menghapus Spendify saat memori penuh.',
+    'Not yet protected from automatic clean-up.': 'Belum terlindungi dari pembersihan otomatis.',
+    'Protect now': 'Lindungi sekarang',
+    'Storage protected': 'Penyimpanan terlindungi',
+    'Your browser decides this on its own. Installing the app usually helps.':
+      'Browser yang menentukan ini. Biasanya terbantu kalau aplikasinya dipasang.',
+    'Saved twice on this device, with a daily copy for the last 14 days.':
+      'Tersimpan dua kali di HP ini, plus salinan harian selama 14 hari terakhir.',
+    'Last backup file: {when}.': 'File cadangan terakhir: {when}.',
+    never: 'belum pernah',
+    yesterday: 'kemarin',
+    '{n} days ago': '{n} hari lalu',
+    'A backup file is the only thing that survives losing or resetting this phone. Save one now and then to Google Drive, WhatsApp or Files.':
+      'Kalau HP hilang atau di-reset, hanya file cadangan yang bisa menyelamatkan datamu. Simpan sesekali ke Google Drive, WhatsApp, atau Files.',
+    'Save backup': 'Simpan cadangan',
+    'Restore from file': 'Pulihkan dari file',
+    'Download the file instead': 'Unduh filenya saja',
+    'Hide earlier copies': 'Sembunyikan salinan lama',
+    'Go back to an earlier copy': 'Kembali ke salinan sebelumnya',
+    'No copies yet. One is saved each day you use the app.': 'Belum ada salinan. Satu salinan dibuat setiap hari kamu memakai aplikasi.',
+    Restore: 'Pulihkan',
+    'Replace what’s in the app with this backup? A copy of the current data is kept, so you can switch back.':
+      'Ganti isi aplikasi dengan cadangan ini? Data sekarang tetap disalin, jadi bisa dikembalikan.',
+    'Backup restored': 'Cadangan dipulihkan',
+    'Go back to the copy from {when} ({n} expenses)? Your current data is kept as another copy.':
+      'Kembali ke salinan {when} ({n} pengeluaran)? Data sekarang tetap disimpan sebagai salinan.',
+    'Earlier copy restored': 'Salinan lama dipulihkan',
+    'This file is not a Spendify backup.': 'File ini bukan cadangan Spendify.',
+    'That file could not be read.': 'File tidak bisa dibaca.',
+    'That copy is no longer available.': 'Salinan itu sudah tidak ada.',
+    'Before restoring a backup file': 'sebelum memulihkan file cadangan',
+    'Before restoring an earlier copy': 'sebelum memulihkan salinan lama',
+    'Before deleting all data': 'sebelum menghapus semua data',
+    'Start over': 'Mulai dari awal',
+    'Clears every expense and your plan. A copy is kept under “Go back to an earlier copy” in case you change your mind.':
+      'Menghapus semua pengeluaran dan rencanamu. Salinannya tetap ada di “Kembali ke salinan sebelumnya” kalau berubah pikiran.',
+    'Type “delete” to confirm': 'Ketik “hapus” untuk konfirmasi',
+    'delete-word': 'hapus',
+    'Delete all data': 'Hapus semua data',
+    'All data cleared': 'Semua data dihapus',
+    'Spendify works offline. Nothing you enter ever leaves this device unless you save a backup.':
+      'Spendify jalan tanpa internet. Datamu tidak pernah keluar dari HP ini kecuali kamu menyimpan cadangan.',
+    'Changing the currency only changes the symbol. Amounts you already entered stay the same numbers.':
+      'Mengganti mata uang hanya mengganti simbolnya. Angka yang sudah dicatat tidak berubah.',
+
+    'Your saved data was damaged, so it was restored from the automatic copy on this device.':
+      'Data tersimpan sempat rusak, jadi dipulihkan dari salinan otomatis di HP ini.',
+    'Your data was restored from the automatic copy on this device.': 'Datamu dipulihkan dari salinan otomatis di HP ini.',
+    Loading: 'Memuat',
+  },
+};
+
+/* ---------- clearer dashboard + "after this expense" preview ---------- */
+
+Object.assign(DICT.en, {
+  'Money left this month': 'Money left to spend this month',
+  'On track': 'On track',
+  'Spending a bit fast': 'Spending a bit fast',
+  'Over budget': 'Over budget',
+  'Spent {spent} of {budget}': 'Spent {spent} of {budget}',
+  '{n} day left in {month}': 'Last day of {month}',
+  '{n} days left in {month}': '{n} days left in {month}',
+  'status-ok': 'You’re spending at a comfortable pace.',
+  'status-fast': 'You’re spending faster than your budget allows. Go easy for a few days.',
+  'status-over': 'This month’s budget is used up. {amount} has come out of savings.',
+  'You can spend today': 'You can still spend today',
+  'Today’s share {allowance}, spent {spent}': 'Today’s share is {allowance}. Spent so far: {spent}.',
+  'Over today’s share': 'Over today’s share by',
+  'Tomorrow’s share will be a little smaller.': 'Today’s share was {allowance}. Tomorrow’s will be a little smaller.',
+  'Budget used up today': 'Anything you spend now comes out of savings.',
+  'savings-hint-carry': 'Set aside this month, plus {amount} left over from earlier months',
+  'savings-hint': 'Money you set aside. Unspent budget is added when the month ends.',
+  'Most spent on': 'Most spent on',
+  'How this works': 'How this works',
+  'how-1': 'Each month your income is split into money to spend and money to save.',
+  'how-2': 'Today’s share is what’s left to spend, divided by the days left in the month.',
+  'how-3': 'Whatever you don’t spend moves into savings when the month ends.',
+  'After this: {amount} left this month': 'After this: {amount} left this month',
+  'After this: {amount} left in {month}': 'After this: {amount} left in {month}',
+  '{amount} left for today': '{amount} left for today',
+  '{amount} over today’s share': '{amount} over today’s share',
+  'preview-over': 'Over budget: {amount} will come out of savings, leaving {left} there.',
+});
+
+Object.assign(DICT.id, {
+  'Money left this month': 'Sisa uang belanja bulan ini',
+  'On track': 'Aman',
+  'Spending a bit fast': 'Agak boros',
+  'Over budget': 'Lewat anggaran',
+  'Spent {spent} of {budget}': 'Terpakai {spent} dari {budget}',
+  '{n} day left in {month}': 'Hari terakhir bulan {month}',
+  '{n} days left in {month}': '{n} hari lagi di bulan {month}',
+  'status-ok': 'Pengeluaranmu masih aman.',
+  'status-fast': 'Pengeluaranmu lebih cepat dari anggaran. Hemat dulu beberapa hari ya.',
+  'status-over': 'Anggaran bulan ini sudah habis. {amount} diambil dari tabungan.',
+  'You can spend today': 'Masih bisa dipakai hari ini',
+  'Today’s share {allowance}, spent {spent}': 'Jatah hari ini {allowance}. Sudah terpakai {spent}.',
+  'Over today’s share': 'Lewat dari jatah hari ini',
+  'Tomorrow’s share will be a little smaller.': 'Jatah hari ini {allowance}. Jatah besok jadi sedikit berkurang.',
+  'Budget used up today': 'Pengeluaran berikutnya diambil dari tabungan.',
+  'savings-hint-carry': 'Disisihkan bulan ini, plus {amount} sisa bulan-bulan sebelumnya',
+  'savings-hint': 'Uang yang kamu sisihkan. Sisa anggaran ditambahkan di akhir bulan.',
+  'Most spent on': 'Paling banyak untuk',
+  'How this works': 'Cara kerjanya',
+  'how-1': 'Setiap bulan pemasukanmu dibagi dua: uang belanja dan tabungan.',
+  'how-2': 'Jatah hari ini adalah sisa uang belanja dibagi jumlah hari yang tersisa bulan ini.',
+  'how-3': 'Uang belanja yang tidak terpakai masuk ke tabungan di akhir bulan.',
+  'After this: {amount} left this month': 'Setelah ini: sisa {amount} bulan ini',
+  'After this: {amount} left in {month}': 'Setelah ini: sisa {amount} di bulan {month}',
+  '{amount} left for today': 'sisa {amount} untuk hari ini',
+  '{amount} over today’s share': 'lewat {amount} dari jatah hari ini',
+  'preview-over': 'Lewat anggaran: {amount} akan diambil dari tabungan, sisa tabungan jadi {left}.',
+});
+
+Object.assign(DICT.en, { 'Every month': 'Every month', 'Other date': 'Other date' });
+Object.assign(DICT.id, { 'Every month': 'Tiap bulan', 'Other date': 'Tanggal lain' });
+
+Object.assign(DICT.en, { 'preview-short': 'Not enough money: this is {amount} more than your budget and savings together.' });
+Object.assign(DICT.id, { 'preview-short': 'Uangnya tidak cukup: ini {amount} lebih besar dari sisa anggaran dan tabunganmu.' });

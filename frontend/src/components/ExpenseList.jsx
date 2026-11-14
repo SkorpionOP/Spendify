@@ -1,21 +1,23 @@
 import { category } from '../lib/categories';
 import { dayLabel } from '../lib/dates';
 import { money } from '../lib/format';
+import { catName, t } from '../lib/i18n';
 import { useExpenseSheet } from './ExpenseSheet';
 
 export function ExpenseRow({ expense, showDate = false }) {
   const open = useExpenseSheet();
   const c = category(expense.category);
+  const name = catName(expense.category);
   return (
     <li>
-      <button className="tx" onClick={() => open(expense)} aria-label={`Edit ${expense.category} ${money(expense.amount)}`}>
+      <button className="tx" onClick={() => open(expense)} aria-label={t('Edit {category} {amount}', { category: name, amount: money(expense.amount) })}>
         <span className="tx__icon" style={{ '--cat': c.color }} aria-hidden="true">
           {c.emoji}
         </span>
         <span className="tx__body">
-          <span className="tx__title">{expense.note || expense.category}</span>
+          <span className="tx__title">{expense.note || name}</span>
           <span className="tx__meta">
-            {expense.note ? expense.category : ''}
+            {expense.note ? name : ''}
             {expense.note && showDate ? ', ' : ''}
             {showDate ? dayLabel(expense.date) : ''}
           </span>

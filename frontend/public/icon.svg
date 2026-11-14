@@ -1,4 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#6366f1"/>
-  <text x="256" y="276" font-size="200" text-anchor="middle" fill="#ffffff">💸</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#261a3b"/>
+  <g transform="translate(256 270)">
+    <rect x="-112" y="-142" width="224" height="268" rx="64" fill="#3a2d52"/>
+    <clipPath id="j"><rect x="-112" y="-142" width="224" height="268" rx="64"/></clipPath>
+    <rect x="-112" y="-20" width="224" height="146" fill="#f4f1fa" clip-path="url(#j)"/>
+    <rect x="-80" y="-182" width="160" height="56" rx="22" fill="#e5487a"/>
+  </g>
 </svg>

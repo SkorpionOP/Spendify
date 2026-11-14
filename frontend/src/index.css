@@ -1184,18 +1184,34 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   border: 1.5px solid transparent;
   border-radius: 12px;
   background: color-mix(in srgb, var(--jam) calc(var(--heat) * 55%), var(--surface-2));
   padding: 0;
   min-width: 0;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.cal__day:active {
+  transform: scale(0.95);
+}
+
+.cal__day.is-future {
+  opacity: 0.55;
+  background: var(--surface-2);
+}
+
+.cal__day.is-future:hover,
+.cal__day.is-future:focus-visible {
+  opacity: 0.9;
 }
 
 .cal__day:disabled {
   background: transparent;
   color: var(--ink-3);
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: default;
 }
 
@@ -1208,25 +1224,186 @@ a {
 .cal__amt {
   font-size: 0.625rem;
   font-weight: 700;
-  line-height: 1.2;
-  opacity: 0.85;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0 2px;
+  opacity: 0.9;
+}
+
+.cal__day.is-today::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--jam);
 }
 
 .cal__day.is-today .cal__num {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+  color: var(--jam);
 }
 
 .cal__day.is-selected {
   border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+  opacity: 1;
+}
+
+.cal__repeat-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--jam);
+  opacity: 0.85;
+  line-height: 1;
+}
+
+.cal__repeat-dot {
+  position: absolute;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0.8;
 }
 
 .cal__foot {
-  margin-top: 12px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cal__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
   font-size: 0.8125rem;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.cal__pending-badge {
+  color: var(--jam);
+  font-weight: 600;
+}
+
+.cal__legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 0.75rem;
   color: var(--ink-3);
-  text-align: center;
+}
+
+.cal__legend-bar {
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--surface-2), var(--jam));
+  border: 1px solid var(--line);
+}
+
+/* Head actions with Today button */
+.cal__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal__today-btn {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 999px;
+  height: auto;
+}
+
+/* Scheduled repeats card */
+.cal__repeats-card {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: color-mix(in srgb, var(--jam) 6%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--jam) 22%, var(--line));
+  border-radius: 16px;
+}
+
+.cal__repeats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.cal__repeats-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cal__repeats-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cal__repeat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cal__repeat-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.cal__repeat-emoji {
+  font-size: 1.25rem;
+  flex: none;
+}
+
+.cal__repeat-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.cal__repeat-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal__repeat-sub {
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+.cal__day-section {
+  padding-bottom: 32px;
 }
 
 /* ---------- insights ---------- */
@@ -3001,6 +3178,7 @@ label.btn {
 .is-private .quick__amt,
 .is-private .cal__amt,
 .is-private .cal__foot,
+.is-private .cal__repeat-sub,
 .is-private .section__aside,
 .is-private .cat-table td:nth-child(2),
 .is-private .daily-chart,

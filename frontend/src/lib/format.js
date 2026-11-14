@@ -28,6 +28,28 @@ export const compact = (n) => {
   return nf('c', { notation: 'compact', maximumFractionDigits: 1 }).format(v);
 };
 
+/** Shortest representation for calendar tiles and badges: e.g. "605k", "1.2M", "500" */
+export const calCompact = (n) => {
+  const v = Math.abs(Number(n) || 0);
+  if (!v) return '';
+  const { lang, currency } = getConfig();
+  const isId = lang === 'id' || currency === 'IDR';
+  if (v < 1000) return String(Math.round(v));
+  if (v < 1_000_000) {
+    const k = v / 1000;
+    const str = k >= 100 || k % 1 === 0 ? String(Math.round(k)) : k.toFixed(1).replace(/\.0$/, '');
+    return `${str}k`;
+  }
+  if (v < 1_000_000_000) {
+    const m = v / 1_000_000;
+    const str = m >= 100 || m % 1 === 0 ? String(Math.round(m)) : m.toFixed(1).replace(/\.0$/, '');
+    return `${str}${isId ? 'jt' : 'M'}`;
+  }
+  const b = v / 1_000_000_000;
+  const str = b >= 100 || b % 1 === 0 ? String(Math.round(b)) : b.toFixed(1).replace(/\.0$/, '');
+  return `${str}${isId ? 'M' : 'B'}`;
+};
+
 /** The bare symbol, e.g. "Rp" or "$" */
 export const currencySymbol = () =>
   nf('sym', { maximumFractionDigits: 0 })

@@ -742,6 +742,9 @@ Object.assign(DICT.en, {
   'Repeat notifications enabled': 'Repeat notifications enabled',
   'Notifications were blocked in your browser.': 'Notifications were blocked in your browser.',
   'Repeat notifications paused': 'Repeat notifications paused',
+  'Something went wrong': 'Something went wrong',
+  'An unexpected error occurred.': 'An unexpected error occurred.',
+  'Try again': 'Try again',
 });
 Object.assign(DICT.id, {
   More: 'Lainnya',
@@ -797,4 +800,7 @@ Object.assign(DICT.id, {
   'Repeat notifications enabled': 'Notifikasi pengeluaran rutin diaktifkan',
   'Notifications were blocked in your browser.': 'Notifikasi diblokir di setelan browser kamu.',
   'Repeat notifications paused': 'Notifikasi pengeluaran rutin dinonaktifkan',
+  'Something went wrong': 'Terjadi kesalahan',
+  'An unexpected error occurred.': 'Terjadi kesalahan yang tidak terduga.',
+  'Try again': 'Coba lagi',
 });

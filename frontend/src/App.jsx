@@ -5,6 +5,7 @@ import { ToastProvider, useToast } from './components/Toasts';
 import { catName, t } from './lib/i18n';
 import { money } from './lib/format';
 import { sendNotification } from './lib/notifications';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExpenseSheetProvider } from './components/ExpenseSheet';
 import { AppShell } from './components/AppShell';
 import Onboarding from './pages/Onboarding';
@@ -83,7 +84,9 @@ export default function App() {
     <BrowserRouter>
       <StoreProvider>
         <ToastProvider>
-          <Routed />
+          <ErrorBoundary>
+            <Routed />
+          </ErrorBoundary>
         </ToastProvider>
       </StoreProvider>
     </BrowserRouter>

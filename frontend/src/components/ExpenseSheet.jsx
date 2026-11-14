@@ -9,6 +9,7 @@ import { previewAfter } from '../lib/budget';
 import { useBackClose } from '../lib/backclose';
 import { useStore } from '../lib/store';
 import { useToast } from './Toasts';
+import { ErrorBoundary } from './ErrorBoundary';
 
 const SheetContext = createContext(null);
 
@@ -53,7 +54,11 @@ export function ExpenseSheetProvider({ children }) {
   return (
     <SheetContext.Provider value={open}>
       {children}
-      {editing !== undefined && <ExpenseSheet key={editing.id || 'new'} expense={editing} onClose={requestClose} />}
+      {editing !== undefined && (
+        <ErrorBoundary onReset={requestClose}>
+          <ExpenseSheet key={editing.id || 'new'} expense={editing} onClose={requestClose} />
+        </ErrorBoundary>
+      )}
     </SheetContext.Provider>
   );
 }
@@ -369,14 +374,16 @@ function ExpenseSheet({ expense, onClose }) {
                 +
               </button>
             </label>
-            <p id="entry-feedback" className={`entry__feedback ${error ? 'is-error' : previewTone}`} aria-live="polite">
-              {error || (
-                <>
-                  {isSum && <strong>= {money(value, { precise: true })}. </strong>}
-                  {previewText}
-                </>
+            <div id="entry-feedback" className={`entry__feedback ${error ? 'is-error' : previewTone}`} aria-live="polite">
+              {error ? (
+                <span>{error}</span>
+              ) : (
+                <span>
+                  {isSum ? <strong>= {money(value, { precise: true })}. </strong> : null}
+                  {previewText ? <span>{previewText}</span> : null}
+                </span>
               )}
-            </p>
+            </div>
           </div>
 
           {/* One-tap repeats of what she logs most */}

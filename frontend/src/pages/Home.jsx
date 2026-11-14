@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CalendarClock, Check, CircleHelp, Eye, EyeOff, Gauge, Plus, Settings, Target, Wallet, X } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Check, ChevronRight, CircleHelp, Eye, EyeOff, Gauge, Plus, Settings, Sparkles, Target, Wallet, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { limitStatus } from '../lib/money';
 import { monthRecap, weekRecap } from '../lib/recap';
@@ -295,6 +295,19 @@ export default function Home() {
       )}
 
       <SavingsCard savings={p.leftSavings} carriedIn={p.carriedIn} onEdit={editGoal} />
+
+      {p.status !== 'none' && (
+        <Link to="/twin" className="twin-cta">
+          <span className="twin-cta__icon" aria-hidden="true">
+            <Sparkles size={20} />
+          </span>
+          <span className="twin-cta__text">
+            <span className="twin-cta__title">{t('twin-cta-title')}</span>
+            <span className="twin-cta__body">{t('twin-cta-body')}</span>
+          </span>
+          <ChevronRight size={20} aria-hidden="true" />
+        </Link>
+      )}
 
       <LimitsSection onManage={() => openPanel('limits')} onlyWarnings />
 

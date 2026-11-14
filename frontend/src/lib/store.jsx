@@ -315,6 +315,14 @@ export function StoreProvider({ children }) {
     [setState]
   );
 
+  /* saved "what if" scenarios */
+  const saveScenario = useCallback(
+    ({ name, text }) =>
+      setState((s) => ({ ...s, scenarios: [{ id: uid(), name: name.trim(), text: text.trim(), createdAt: Date.now() }, ...s.scenarios].slice(0, 20) })),
+    [setState]
+  );
+  const removeScenario = useCallback((id) => setState((s) => ({ ...s, scenarios: s.scenarios.filter((x) => x.id !== id) })), [setState]);
+
   const exportData = useCallback(() => JSON.stringify({ ...latest.current, exportedAt: Date.now() }, null, 2), []);
 
   const markBackedUp = useCallback(() => setState((s) => ({ ...s, lastBackupAt: Date.now() })), [setState]);
@@ -385,6 +393,8 @@ export function StoreProvider({ children }) {
     removeGoal,
     moveGoal,
     setLimit,
+    saveScenario,
+    removeScenario,
     exportData,
     markBackedUp,
     importData,

@@ -9,6 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExpenseSheetProvider } from './components/ExpenseSheet';
 import { AppShell } from './components/AppShell';
 import Onboarding from './pages/Onboarding';
+import Twin from './pages/Twin';
 import Home from './pages/Home';
 import CalendarPage from './pages/CalendarPage';
 import Insights from './pages/Insights';
@@ -72,6 +73,7 @@ function Routed() {
           <Route path="/insights" element={<Insights />} />
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/twin" element={<Twin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppShell>

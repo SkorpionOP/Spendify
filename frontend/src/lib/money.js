@@ -14,6 +14,7 @@ export const empty = () => ({
   recurring: [],
   goals: [], // [{ id, name, target, createdAt }] filled from savings, in list order
   limits: {}, // { Category: monthly cap }
+  scenarios: [], // saved "what if" sentences: [{ id, name, text, createdAt }] (never touch real data)
   settings: {
     theme: 'system',
     lang: defaultLang(),
@@ -54,6 +55,7 @@ export const normalize = (raw) => {
     s.limits && typeof s.limits === 'object'
       ? Object.fromEntries(Object.entries(s.limits).filter(([, v]) => Number(v) > 0).map(([k, v]) => [k, Number(v)]))
       : {};
+  s.scenarios = Array.isArray(s.scenarios) ? s.scenarios.filter((x) => x && x.id && typeof x.text === 'string') : [];
   s.settings = { ...base.settings, ...(s.settings || {}) };
   s.settings.trackPayment = !!s.settings.trackPayment;
   s.settings.hideAmounts = !!s.settings.hideAmounts;

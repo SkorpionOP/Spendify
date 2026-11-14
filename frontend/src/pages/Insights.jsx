@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Repeat } from 'lucide-react';
+import { ChevronDown, ChevronUp, Repeat, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { monthInsights } from '../lib/insights';
 import { currentMonth, dayLabel, monthLabel, shortDate } from '../lib/dates';
@@ -32,6 +33,9 @@ export default function Insights() {
           <MonthSwitcher value={month} onChange={setMonth} />
         </div>
       </header>
+      <Link to="/twin" className="btn btn--ghost btn--sm insights__twin">
+        <Sparkles size={16} /> {t('Try a what-if')}
+      </Link>
 
       {d.list.length === 0 ? (
         <div className="empty">

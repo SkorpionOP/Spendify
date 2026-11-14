@@ -1,17 +1,17 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bookmark, ChevronLeft, Mic, MicOff, Sparkles, Trash2, X } from 'lucide-react';
+import { Bookmark, Check, ChevronLeft, Mic, MicOff, PiggyBank, Sparkles, Trash2, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { simulate } from '../lib/twin';
 import { clauses, understand } from '../lib/nlu';
 import { askAI } from '../lib/ai';
 import { cleanChange } from '../lib/changes';
 import { addMonths, monthLabel } from '../lib/dates';
-import { compact, money } from '../lib/format';
+import { compact, money, roundUpNice } from '../lib/format';
 import { catName, getConfig, t, tn } from '../lib/i18n';
 import { useToast } from '../components/Toasts';
 
-const EXAMPLES = ['ex-buy', 'ex-save', 'ex-cut', 'ex-income', 'ex-target', 'ex-loan'];
+const EXAMPLES = ['ex-goal', 'ex-buy', 'ex-save', 'ex-cut', 'ex-income', 'ex-target', 'ex-loan'];
 
 const Speech = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 
@@ -41,6 +41,10 @@ const describe = (c) => {
       );
     case 'target':
       return t('When will I have {amount}?', { amount: money(c.amount) });
+    case 'goal':
+      return c.months
+        ? t('Save {amount} for {name} in {n} months', { amount: money(c.amount), name: c.name || t('something'), n: c.months })
+        : t('Save {amount} for {name}', { amount: money(c.amount), name: c.name || t('something') });
     default:
       return '';
   }
@@ -328,8 +332,16 @@ function Results({ r, onSave }) {
     [t('Savings in 12 months'), r.before.balance[12], r.after.balance[12]],
   ];
 
+  // A scenario that is only "save up for X" doesn't change spending, so the plan card is the whole answer.
+  const onlyPlans = r.plans.length > 0 && !r.afford && !r.targets.length && r.after.balance.every((b, i) => b === r.before.balance[i]);
+
   return (
     <>
+      {r.plans.map((plan, i) => (
+        <PlanCard key={`${plan.name}-${plan.amount}-${i}`} plan={plan} />
+      ))}
+      {onlyPlans ? null : (
+        <>
       <section className={`verdict is-${verdict.tone}`} aria-live="polite">
         <h2 className="verdict__title">{verdict.title}</h2>
         <p className="verdict__text private-num">{verdict.text}</p>
@@ -391,7 +403,85 @@ function Results({ r, onSave }) {
       <button className="btn btn--ghost btn--block" onClick={onSave}>
         <Bookmark size={18} /> {t('Save this scenario')}
       </button>
+        </>
+      )}
     </>
+  );
+}
+
+/** A savings plan, and the question: add it as a savings goal? */
+function PlanCard({ plan }) {
+  const { state, addGoal } = useStore();
+  const toast = useToast();
+  const [pace, setPace] = useState('main'); // or 'easier'
+  const chosen = pace === 'easier' && plan.easier ? { ...plan, ...plan.easier, level: 'easy' } : plan;
+  const name = plan.name || t('My goal');
+  const added = state.goals.some((g) => g.name === name && g.target === plan.amount);
+  const month = (key) => monthLabel(key, { month: 'long', year: 'numeric' });
+
+  const lines = [];
+  if (chosen.level === 'covered') {
+    lines.push(t('plan-covered', { amount: money(plan.amount) }));
+  } else {
+    lines.push(
+      t('plan-need', {
+        amount: money(chosen.need),
+        n: chosen.months,
+        month: month(chosen.by),
+      }) + (plan.need < plan.amount ? ` ${t('plan-spare', { amount: money(plan.amount - plan.need) })}` : '')
+    );
+    lines.push(t('plan-monthly', { amount: money(roundUpNice(chosen.monthly)) }));
+    if (chosen.proposed && pace === 'main') lines.push(t('plan-proposed'));
+    lines.push(
+      chosen.level === 'easy'
+        ? t('plan-easy', { free: money(chosen.free) })
+        : chosen.level === 'tight'
+          ? t('plan-tight', { free: money(chosen.free) })
+          : t('plan-hard', { free: money(chosen.free) })
+    );
+  }
+
+  const add = () => {
+    addGoal({ name, target: plan.amount, by: chosen.level === 'covered' ? null : chosen.by });
+    toast(t('Goal added: {name}. You can see it on Home.', { name }));
+  };
+
+  return (
+    <section className={`plan is-${chosen.level}`} aria-label={t('Savings plan for {name}', { name })}>
+      <div className="plan__head">
+        <span className="plan__icon" aria-hidden="true">
+          <PiggyBank size={20} />
+        </span>
+        <h2 className="plan__title">{t('Plan: {name}', { name })}</h2>
+      </div>
+      {lines.map((l, i) => (
+        <p key={i} className={`plan__line private-num ${i === lines.length - 1 && chosen.level !== 'covered' ? 'plan__verdict' : ''}`}>
+          {l}
+        </p>
+      ))}
+      {plan.easier && plan.level === 'hard' && (
+        <button type="button" className="chip plan__alt" onClick={() => setPace(pace === 'easier' ? 'main' : 'easier')}>
+          {pace === 'easier'
+            ? t('Back to {n} months', { n: plan.months })
+            : t('Try {n} months instead ({amount} a month)', { n: plan.easier.months, amount: money(roundUpNice(plan.easier.monthly)) })}
+        </button>
+      )}
+      {added ? (
+        <p className="plan__done">
+          <Check size={16} aria-hidden="true" /> {t('Added to your savings goals')}{' '}
+          <Link to="/" className="link-btn">
+            {t('See on Home')}
+          </Link>
+        </p>
+      ) : (
+        <div className="plan__ask">
+          <p className="plan__q">{t('Add this to your savings goals?')}</p>
+          <button type="button" className="btn btn--primary" onClick={add}>
+            {t('Yes, add it')}
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 

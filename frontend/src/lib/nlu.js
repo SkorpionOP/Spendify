@@ -138,6 +138,7 @@ const RE = {
   cut: /\b(kurangi|mengurangi|kurangin|hemat|irit|cut|reduce|less|stop|berhenti|skip|tanpa)\b/i,
   stop: /\b(stop|berhenti|tanpa|no more|quit)\b/i,
   save: /\b(nabung|menabung|tabung|save|saving|sisihkan|simpan|put aside|set aside)\b/i,
+  goalFor: /\b(buat|untuk|for|up for|biar bisa|so i can)\b/i,
   monthly: /\b(tiap bulan|setiap bulan|per bulan|perbulan|sebulan|monthly|a month|per month|each month|every month|bulanan)\b|\/\s*(bln|bulan|month|mo)\b/i,
   recurringWord: /\b(langganan|subscription|cicilan|installment|kredit|kos|kost|sewa|rent|nyicil|angsuran)\b/i,
   buy: /\b(beli|membeli|buy|purchase|afford|mampu|sanggup|bayar|pay for|liburan|trip|holiday|jalan-jalan|nikah|wedding)\b/i,
@@ -158,7 +159,7 @@ const MONTHS = [
   ['juni', 'june', 'jun'], ['juli', 'july', 'jul'], ['agustus', 'august', 'aug', 'agu'], ['september', 'sep', 'sept'],
   ['oktober', 'october', 'oct', 'okt'], ['november', 'nov'], ['desember', 'december', 'dec', 'des'],
 ];
-const WHEN = /\b(akhir tahun|end of (?:the )?year|tahun depan|next year|bulan depan|next month|(?:bulan|in|di|pas|on)\s+(?:januari|january|februari|february|maret|march|april|mei|may|juni|june|juli|july|agustus|august|september|oktober|october|november|desember|december))\b|\b(?:\d+)\s*bulan lagi\b|\bin\s*\d+\s*months?\b/gi;
+const WHEN = /\b(akhir tahun|end of (?:the )?year|tahun depan|next year|bulan depan|next month|(?:bulan|in|di|pas|on|by|sebelum|before|sampai)\s+(?:januari|january|februari|february|maret|march|april|mei|may|juni|june|juli|july|agustus|august|september|oktober|october|november|desember|december))\b|\b(?:\d+)\s*bulan lagi\b|\bin\s*\d+\s*months?\b/gi;
 
 /** How many months from now a purchase happens (0 = this month). */
 const whenIn = (text, now) => {
@@ -168,7 +169,7 @@ const whenIn = (text, now) => {
   if (n) return Math.min(12, Number(n.slice(1).find(Boolean)));
   if (/\b(akhir tahun|end of (the )?year)\b/i.test(text)) return 11 - m;
   if (/\b(tahun depan|next year)\b/i.test(text)) return 12 - m;
-  const named = text.match(/\b(?:bulan|in|di|pas|on)\s+([a-z]+)\b/i);
+  const named = text.match(/\b(?:bulan|in|di|pas|on|by|sebelum|before|sampai)\s+([a-z]+)\b/i);
   if (named) {
     const i = MONTHS.findIndex((names) => names.includes(named[1].toLowerCase()));
     if (i >= 0) return (i - m + 12) % 12;
@@ -200,6 +201,19 @@ export const parseClause = (raw, now = new Date()) => {
     if (pct != null) return { type: 'cut', category: cat, pct: Math.min(1, pct) };
     if (amount) return { type: 'cut', category: cat, amount };
     return { type: 'cut', category: cat, pct: 0.2, assumed: true };
+  }
+
+  // Save up for something: "nabung 5 juta buat liburan dalam 6 bulan", "save 3M for a phone by June"
+  if ((RE.save.test(text) || /\b(target|kumpulin|ngumpulin|collect)\b/i.test(text)) && amount && RE.goalFor.test(text) && !RE.monthly.test(text)) {
+    const within = text.match(/\b(?:dalam|within|in)\s*(\d+)\s*(bulan|months?|bln)\b/i);
+    const months = within ? Number(within[1]) : whenIn(text, now) || null;
+    const name = tidyName(
+      text
+        .replace(WHEN, ' ')
+        .replace(/\b(?:dalam|within|in)\s*\d+\s*(bulan|months?|bln)\b/gi, ' ')
+        .replace(/\b(nabung|menabung|tabung|save|saving|up|target|kumpulin|ngumpulin|collect|buat|untuk|for|biar bisa|so i can|by|sampai|sebelum|before)\b/gi, ' ')
+    );
+    return { type: 'goal', amount, name, months };
   }
 
   // Save more every month

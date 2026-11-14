@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { ArrowDown, ArrowUp, PartyPopper, PiggyBank, Plus, Target, Trash2 } from 'lucide-react';
 import { goalProgress } from '../lib/money';
 import { useStore } from '../lib/store';
-import { amountToInput, currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
+import { currentMonth, monthLabel } from '../lib/dates';
+import { amountToInput, currencySymbol, formatAmountInput, money, parseAmountInput, roundUpNice } from '../lib/format';
 import { t } from '../lib/i18n';
 import { useToast } from './Toasts';
 
@@ -44,12 +45,29 @@ export function SavingsCard({ savings, carriedIn, onEdit }) {
                 <span className="goal__bar" aria-hidden="true">
                   <span style={{ '--w': `${g.frac * 100}%` }} />
                 </span>
+                {!g.done && g.by && <GoalPace goal={g} />}
               </button>
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+/** "By May 2027, Rp 500.000 a month" under a goal that has a target month. */
+function GoalPace({ goal }) {
+  const now = currentMonth();
+  const [y1, m1] = now.split('-').map(Number);
+  const [y2, m2] = goal.by.split('-').map(Number);
+  const months = (y2 - y1) * 12 + (m2 - m1);
+  const label = monthLabel(goal.by, { month: 'short', year: 'numeric' });
+  return (
+    <span className={`mini-goal__pace private-num ${months <= 0 ? 'is-late' : ''}`}>
+      {months > 0
+        ? t('By {month}: {amount} a month', { month: label, amount: money(roundUpNice(goal.missing / months)) })
+        : t('Target month {month} has passed', { month: label })}
+    </span>
   );
 }
 

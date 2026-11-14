@@ -111,6 +111,35 @@ const reach = (balance, amount) => {
   return i < 0 ? null : i;
 };
 
+/**
+ * One savings plan. `level`: 'covered' (unused savings already enough), 'easy' (≤ 60% of what she
+ * usually has left a month), 'tight' (fits, barely), 'hard' (more than she usually has left).
+ * Without a deadline, it proposes one at a relaxed pace (half of what she usually has left).
+ */
+export const savingsPlan = (c, spare, free, key) => {
+  const need = Math.max(0, c.amount - Math.max(0, spare));
+  const relaxed = (share) => (free > 0 ? Math.max(1, Math.ceil(need / (free * share))) : null);
+  let months = c.type === 'goal' ? c.months : c.at;
+  const proposed = !months;
+  if (!months) months = need ? relaxed(0.5) : 1;
+  const monthly = months ? need / months : null;
+  let level = 'covered';
+  if (need > 0) level = monthly == null ? 'hard' : monthly <= free * 0.6 ? 'easy' : monthly <= free ? 'tight' : 'hard';
+  const easier = level === 'hard' ? relaxed(0.6) : null;
+  return {
+    name: c.name || '',
+    amount: c.amount,
+    months,
+    by: months ? addMonths(key, months) : null,
+    proposed,
+    need,
+    monthly,
+    free,
+    level,
+    easier: easier && easier !== months ? { months: easier, monthly: need / easier, by: addMonths(key, easier) } : null,
+  };
+};
+
 /** Everything the page shows: before vs after, verdicts, and goal dates. */
 export const simulate = (state, changes, now = new Date()) => {
   const base = baseline(state, now);
@@ -145,11 +174,19 @@ export const simulate = (state, changes, now = new Date()) => {
     };
   }
 
+  // Savings plans: for "save up for X" and for purchases later on, how much a month would it take?
+  const spare = goalProgress(state.goals || [], base.savingsNow).spare; // savings not already set aside for other goals
+  const free = Math.max(0, before.monthlyNet); // what she normally has left each month
+  const plans = changes
+    .filter((c) => c.type === 'goal' || (c.type === 'purchase' && c.at > 0))
+    .map((c) => savingsPlan(c, spare, free, base.key));
+
   return {
     base,
     before,
     after,
     afford,
+    plans,
     goals,
     targets,
     thisMonthLeft: { before: base.thisMonthLeft, after: base.thisMonthLeft - purchases.filter((c) => !c.at).reduce((s, c) => s + c.amount, 0) },

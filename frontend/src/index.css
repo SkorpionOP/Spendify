@@ -4510,3 +4510,117 @@ label.btn {
   font-size: 0.8125rem;
   line-height: 1.45;
 }
+
+/* Savings plan card in What if…? */
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1.5px solid var(--leaf);
+  background: color-mix(in srgb, var(--leaf-soft) 60%, var(--surface));
+}
+
+.plan.is-tight {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber-soft) 60%, var(--surface));
+}
+
+.plan.is-hard {
+  border-color: color-mix(in srgb, var(--danger) 60%, var(--line));
+  background: var(--surface);
+}
+
+.plan__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--leaf);
+}
+
+.plan__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+}
+
+.plan__line {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.plan__verdict {
+  font-weight: 700;
+  color: var(--leaf);
+}
+
+.plan.is-tight .plan__verdict {
+  color: var(--amber);
+}
+
+.plan.is-hard .plan__verdict {
+  color: var(--danger);
+}
+
+.plan__alt {
+  align-self: flex-start;
+  white-space: normal;
+  text-align: left;
+  min-height: 36px;
+  padding: 6px 13px;
+}
+
+.plan__ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.plan__q {
+  margin: 0;
+  font-weight: 700;
+}
+
+.plan__ask .btn {
+  min-height: 44px;
+  border-radius: 999px;
+}
+
+.plan__done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--leaf);
+  font-weight: 700;
+}
+
+.mini-goal__pace {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--leaf);
+}
+
+.mini-goal__pace.is-late {
+  color: var(--amber);
+}

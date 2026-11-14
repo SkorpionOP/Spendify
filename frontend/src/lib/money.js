@@ -50,7 +50,9 @@ export const normalize = (raw) => {
       }))
     : [];
   s.goals = Array.isArray(s.goals)
-    ? s.goals.filter((g) => g && g.id && Number(g.target) > 0).map((g) => ({ ...g, name: String(g.name || ''), target: Number(g.target) }))
+    ? s.goals
+        .filter((g) => g && g.id && Number(g.target) > 0)
+        .map((g) => ({ ...g, name: String(g.name || ''), target: Number(g.target), by: /^\d{4}-\d{2}$/.test(g.by) ? g.by : null }))
     : [];
   s.limits =
     s.limits && typeof s.limits === 'object'

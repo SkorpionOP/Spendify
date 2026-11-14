@@ -20,7 +20,7 @@ export default defineConfig([
   },
   {
     // Vercel serverless functions run on Node
-    files: ['api/**/*.js'],
+    files: ['api/**/*.js', 'local-api.js', 'vite.config.js', 'vitest.config.js'],
     languageOptions: { globals: globals.node },
   },
 ])

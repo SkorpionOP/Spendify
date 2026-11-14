@@ -281,8 +281,8 @@ export function StoreProvider({ children }) {
 
   /* savings goals */
   const addGoal = useCallback(
-    ({ name, target }) =>
-      setState((s) => ({ ...s, goals: [...s.goals, { id: uid(), name: name.trim(), target: Number(target), createdAt: Date.now() }] })),
+    ({ name, target, by = null }) =>
+      setState((s) => ({ ...s, goals: [...s.goals, { id: uid(), name: name.trim(), target: Number(target), by, createdAt: Date.now() }] })),
     [setState]
   );
   const updateGoal = useCallback(

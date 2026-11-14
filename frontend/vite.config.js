@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { localApi } from './local-api.js'
 
 export default defineConfig({
   plugins: [
     react(),
+    localApi(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'favicon.svg', 'apple-touch-icon.png'],
@@ -40,6 +42,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         cleanupOutdatedCaches: true,
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

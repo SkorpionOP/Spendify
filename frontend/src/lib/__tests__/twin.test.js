@@ -79,3 +79,41 @@ describe('simulate', () => {
     expect(JSON.stringify(state)).toBe(copy);
   });
 });
+
+describe('savings plans', () => {
+  const NOW2 = new Date(2026, 10, 15, 12);
+  // savingsNow 8M, the existing 10M Laptop goal takes all of it, so nothing is spare; 2M left each month
+  const plan = (change) => simulate(state, [change], NOW2).plans[0];
+
+  it('works out a monthly amount for a deadline', () => {
+    expect(plan({ type: 'goal', amount: 3_000_000, name: 'HP', months: 6 })).toMatchObject({
+      need: 3_000_000,
+      monthly: 500_000,
+      by: '2027-05',
+      level: 'easy',
+      proposed: false,
+    });
+  });
+
+  it('flags plans that need more than she has left, and offers a slower pace', () => {
+    const p = plan({ type: 'goal', amount: 12_000_000, name: 'Motor', months: 3 });
+    expect(p.level).toBe('hard');
+    expect(p.easier).toMatchObject({ months: 10, monthly: 1_200_000 }); // 60% of 2M a month
+  });
+
+  it('proposes a relaxed deadline when none is given', () => {
+    expect(plan({ type: 'goal', amount: 3_000_000, name: 'HP', months: null })).toMatchObject({ months: 3, monthly: 1_000_000, proposed: true });
+  });
+
+  it('counts savings that are not set aside yet, and says when they already cover it', () => {
+    const noGoals = normalize({ ...state, goals: [] });
+    expect(simulate(noGoals, [{ type: 'goal', amount: 3_000_000, name: 'HP', months: 6 }], NOW2).plans[0]).toMatchObject({ level: 'covered', need: 0 });
+    const p = simulate(noGoals, [{ type: 'goal', amount: 11_000_000, name: 'Bali', months: 6 }], NOW2).plans[0];
+    expect(p).toMatchObject({ need: 3_000_000, monthly: 500_000 });
+  });
+
+  it('also plans for purchases later on, but not ones this month', () => {
+    expect(simulate(state, [{ type: 'purchase', amount: 3_000_000, name: 'HP', at: 6 }], NOW2).plans[0]).toMatchObject({ monthly: 500_000 });
+    expect(simulate(state, [{ type: 'purchase', amount: 3_000_000, name: 'HP', at: 0 }], NOW2).plans).toEqual([]);
+  });
+});

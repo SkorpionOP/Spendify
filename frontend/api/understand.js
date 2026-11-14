@@ -24,7 +24,7 @@ const SCHEMA = {
         additionalProperties: false,
         required: ['type', 'amount', 'name', 'at', 'category', 'pct', 'delta', 'set', 'months'],
         properties: {
-          type: { type: 'string', enum: ['purchase', 'save', 'cut', 'income', 'monthly', 'target'] },
+          type: { type: 'string', enum: ['purchase', 'save', 'cut', 'income', 'monthly', 'target', 'goal'] },
           amount: nullable('number'),
           name: nullable('string'),
           at: nullable('integer'),
@@ -49,6 +49,7 @@ Return only changes the person actually described. Fill fields that don't apply 
 - income: monthly income change. Exactly one of: pct (fraction, negative for a decrease), delta (amount, negative for a decrease), set (the new total income).
 - monthly: a new recurring monthly cost such as an instalment, subscription or rent. amount per month (convert daily costs to monthly by multiplying by 30), name, months (null if ongoing).
 - target: the person asks when their savings will reach an amount. amount.
+- goal: the person wants to save up for something specific ("nabung buat liburan 5 juta", "I want to save 3M for a phone by June", "mau punya dana darurat 10 juta"). amount (total needed), name (what it's for, capitalised), months = months from now until they want it (null if they didn't say). A purchase in the future that the person is planning towards can also be a purchase with at > 0.
 
 Amounts are plain numbers in full units: "1,5 jt" = 1500000, "200rb" = 200000, "gopek" = 500, "goceng" = 5000, "ceban" = 10000, "cepek" = 100, "sejuta" = 1000000, "10M" = 10000000.
 If part of the text is a plan without an amount you can infer, or is not about money, copy that part into "unclear". Never invent amounts.`;

@@ -135,5 +135,8 @@ export const tinyAmount = (n) => {
   return fmt(v / 1_000_000) + (id ? 'jt' : 'M');
 };
 
+/** Rounds up to a friendly amount for a monthly saving: Rp 1.153.846 → Rp 1.154.000. */
+export const roundUpNice = (n) => (getConfig().currency === 'IDR' ? Math.ceil(n / 1000) * 1000 : Math.ceil(n));
+
 /** Rounds to a friendly amount for sentences: nearest 1.000 for Rupiah, whole units otherwise. */
 export const roundNice = (n) => (getConfig().currency === 'IDR' ? Math.round(n / 1000) * 1000 : Math.round(n));

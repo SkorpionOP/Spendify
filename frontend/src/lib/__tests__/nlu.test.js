@@ -109,3 +109,17 @@ describe('when a purchase happens', () => {
     expect(at('beli tas 2 juta')).toMatchObject({ at: 0 });
   });
 });
+
+describe('saving up for something', () => {
+  const NOV = new Date(2026, 10, 16);
+  const g = (text) => understand(text, NOV).changes;
+  it('turns "save for X" into a goal, with or without a deadline', () => {
+    expect(g('nabung 5 juta buat liburan dalam 6 bulan')).toEqual([{ type: 'goal', amount: 5_000_000, name: 'Liburan', months: 6 }]);
+    expect(g('mau nabung buat HP baru 3 juta')).toEqual([{ type: 'goal', amount: 3_000_000, name: 'HP baru', months: null }]);
+    expect(g('save 3M for a phone by June')).toEqual([{ type: 'goal', amount: 3_000_000, name: 'Phone', months: 7 }]);
+    expect(g('target 10 juta untuk dana darurat')).toEqual([{ type: 'goal', amount: 10_000_000, name: 'Dana darurat', months: null }]);
+  });
+  it('still reads a plain monthly saving as saving more', () => {
+    expect(g('nabung 200rb tiap bulan')).toEqual([{ type: 'save', amount: 200_000 }]);
+  });
+});

@@ -5,7 +5,7 @@ import { CATEGORIES } from './categories.js';
  * such as the AI helper, goes through `cleanChanges` so a bad answer can never break the simulator.
  */
 
-export const CHANGE_TYPES = ['purchase', 'save', 'cut', 'income', 'monthly', 'target'];
+export const CHANGE_TYPES = ['purchase', 'save', 'cut', 'income', 'monthly', 'target', 'goal'];
 const CATEGORY_NAMES = new Set(CATEGORIES.map((c) => c.name));
 
 const money = (v) => {
@@ -60,6 +60,10 @@ export const cleanChange = (c) => {
     case 'target': {
       const amount = money(c.amount);
       return amount ? { type: 'target', amount } : null;
+    }
+    case 'goal': {
+      const amount = money(c.amount);
+      return amount ? { type: 'goal', amount, name: text(c.name), months: months(c.months) } : null;
     }
     default:
       return null;

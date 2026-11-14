@@ -26,7 +26,7 @@
 > - **Back up** from Settings → Backup (downloads a `.json` file); **restore** it on a new phone or after clearing the browser.
 > - History can export a CSV.
 > - Run it: `cd frontend && npm install && npm run dev`. Deploys as a static site (see `vercel.json`).
-> - The `backend/` and `api/` folders are no longer used by the frontend and can be deleted.
+> - The `backend/` folder is no longer used or deployed (the Python `api/` entry point was removed).
 
 ## ✨ Features
 - **Seamless Authentication**: Secure login flow powered by Firebase Auth (Google OAuth & Email/Password).

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together on purpose */
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -7,16 +7,30 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef({});
 
-  const dismiss = useCallback((id) => {
-    clearTimeout(timers.current[id]);
-    setToasts((t) => t.filter((x) => x.id !== id));
+  useEffect(() => {
+    const currentTimers = timers.current;
+    return () => {
+      Object.values(currentTimers).forEach(clearTimeout);
+    };
   }, []);
 
-  /** toast('Saved'), toast('Deleted', { action: { label: 'Undo', onClick } }), toast('…', { tone: 'warn' }) */
+  const dismiss = useCallback((id) => {
+    clearTimeout(timers.current[id]);
+    delete timers.current[id];
+    setToasts((list) => list.filter((x) => x.id !== id));
+  }, []);
+
+  /**
+   * toast('Saved')
+   * toast('Deleted', { action: { label: 'Undo', onClick } })
+   * toast('Added', { actions: [{ label: 'Make it monthly', onClick }, { label: 'Undo', onClick }] })
+   * toast('…', { tone: 'warn' })
+   */
   const toast = useCallback(
-    (message, { tone = 'plain', action = null, duration = 4000 } = {}) => {
+    (message, { tone = 'plain', action = null, actions = null, duration = 4000 } = {}) => {
       const id = Math.random().toString(36).slice(2);
-      setToasts((t) => [...t.slice(-2), { id, message, tone, action }]);
+      const all = actions || (action ? [action] : []);
+      setToasts((list) => [...list.slice(-1), { id, message, tone, actions: all }]);
       timers.current[id] = setTimeout(() => dismiss(id), duration);
     },
     [dismiss]
@@ -26,19 +40,24 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={toast}>
       {children}
       <div className="toasts" role="status" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className={`toast toast--${t.tone}`}>
-            <span>{t.message}</span>
-            {t.action && (
-              <button
-                className="toast__action"
-                onClick={() => {
-                  t.action.onClick();
-                  dismiss(t.id);
-                }}
-              >
-                {t.action.label}
-              </button>
+        {toasts.map((item) => (
+          <div key={item.id} className={`toast toast--${item.tone} ${item.actions.length > 1 ? 'toast--stack' : ''}`}>
+            <span className="toast__msg">{item.message}</span>
+            {item.actions.length > 0 && (
+              <span className="toast__actions">
+                {item.actions.map((a) => (
+                  <button
+                    key={a.label}
+                    className={`toast__action ${a.primary ? 'toast__action--primary' : ''}`}
+                    onClick={() => {
+                      a.onClick();
+                      dismiss(item.id);
+                    }}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </span>
             )}
           </div>
         ))}

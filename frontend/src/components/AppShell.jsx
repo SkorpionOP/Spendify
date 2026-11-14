@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { CalendarDays, Home, ListOrdered, PieChart, Plus, Settings } from 'lucide-react';
+import { CalendarDays, Eye, EyeOff, Home, ListOrdered, PieChart, Plus, Settings } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { useStore } from '../lib/store';
 import { useExpenseSheet } from './ExpenseSheet';
 import { LangSwitch } from './LangSwitch';
 
@@ -12,11 +13,13 @@ const NAV = [
 ];
 
 export function AppShell({ children }) {
+  const { state, updateSettings } = useStore();
   const open = useExpenseSheet();
   const { pathname } = useLocation();
+  const hidden = !!state.settings?.hideAmounts;
 
   return (
-    <div className="shell">
+    <div className={`shell ${hidden ? 'is-private' : ''}`}>
       <aside className="rail" aria-label="Main">
         <div className="brand">
           <span className="brand__mark" aria-hidden="true">
@@ -40,6 +43,15 @@ export function AppShell({ children }) {
         </nav>
         <div className="rail__foot">
           <LangSwitch />
+          <button
+            className="icon-btn"
+            onClick={() => updateSettings({ hideAmounts: !hidden })}
+            aria-pressed={hidden}
+            aria-label={hidden ? t('Show amounts') : t('Hide amounts')}
+            title={hidden ? t('Show amounts') : t('Hide amounts')}
+          >
+            {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
         </div>
       </aside>
 

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 /** Bottom sheet on phones, centered dialog on larger screens. */
 export function Sheet({ title, onClose, children }) {
@@ -19,7 +20,7 @@ export function Sheet({ title, onClose, children }) {
         <div className="sheet__grip" aria-hidden="true" />
         <header className="sheet__head">
           <h2 id="gsheet-title">{title}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={t('Close')}>
             <X size={20} />
           </button>
         </header>

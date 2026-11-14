@@ -2173,6 +2173,10 @@ label.btn {
 
 .rail__foot {
   margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .onboard__top {
@@ -2801,4 +2805,323 @@ label.btn {
     height: 42px;
     font-size: 1.2rem;
   }
+}
+
+/* ============================================================
+   v4: no sideways scrolling in the entry sheet + small delights
+   ============================================================ */
+
+/* Category grid: top 7 + More, always 4 across */
+.entry__cats {
+  margin: 0;
+}
+
+.cats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px 4px;
+  overflow: visible;
+  padding: 4px 0 0;
+}
+
+.cat {
+  width: auto;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+}
+
+.cat--more {
+  cursor: pointer;
+}
+
+.cat--more:focus-visible .cat__dot {
+  outline: 2.5px solid var(--jam);
+  outline-offset: 4px;
+}
+
+.cat--more .cat__dot {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.cat--more .cat__name {
+  color: var(--ink-2);
+}
+
+/* Quick picks, note suggestions and date chips wrap instead of scrolling */
+.entry__quick,
+.entry__suggest,
+.entry__when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+}
+
+.entry__quick .quick__item,
+.entry__suggest .quick__item {
+  min-height: 36px;
+  max-width: 100%;
+}
+
+.entry__suggest {
+  margin-top: -2px;
+}
+
+/* Toast with two actions stacks its buttons under the message */
+.toast--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 12px 12px 8px 16px;
+}
+
+.toast__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: none;
+}
+
+.toast__action--primary {
+  background: var(--jam);
+  color: var(--jam-ink);
+  padding: 6px 12px;
+}
+
+.toast--warn .toast__action {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.toast--warn .toast__action--primary {
+  text-decoration: none;
+  color: var(--jam-ink);
+}
+
+/* Streak + recap */
+.streak {
+  margin-top: -10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.nudge--recap {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+/* Privacy: blur amounts across the app until she taps the eye again */
+.is-private .month-card__num,
+.is-private .month-card__scale,
+.is-private .today-card__num,
+.is-private .today-card__hint,
+.is-private .tile__value:not(.tile__value--text),
+.is-private .tile__hint,
+.is-private .tx__amount,
+.is-private .group__total,
+.is-private .quick__amt,
+.is-private .cal__amt,
+.is-private .cal__foot,
+.is-private .section__aside,
+.is-private .cat-table td:nth-child(2),
+.is-private .daily-chart,
+.is-private .result-line,
+.is-private .nudge--recap .nudge__body,
+.is-private .month-card__status {
+  filter: blur(9px);
+  user-select: none;
+}
+
+.home__tools {
+  gap: 2px;
+}
+
+/* ============================================================
+   v4.1: fit the whole entry form above the keypad on short phones
+   ============================================================ */
+
+.sheet.entry {
+  max-height: 96dvh;
+}
+
+/* Two quick picks share one line; long names truncate instead of wrapping */
+.entry__quick {
+  flex-wrap: nowrap;
+}
+
+.entry__quick .quick__item {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+}
+
+.entry__quick .quick__text {
+  max-width: none;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* No reserved gap under the amount until there is something to say */
+.entry__feedback {
+  min-height: 0;
+}
+
+.entry__feedback:empty {
+  display: none;
+}
+
+.entry__display {
+  min-height: 56px;
+}
+
+@media (max-height: 760px) {
+  .key {
+    height: 44px;
+  }
+  .cat__dot {
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+  }
+  .cats {
+    gap: 8px 4px;
+  }
+  .entry__display {
+    min-height: 48px;
+  }
+  .entry__display input {
+    font-size: 2.5rem;
+  }
+  .entry__note input {
+    min-height: 40px;
+  }
+  .chip {
+    min-height: 34px;
+  }
+}
+
+@media (max-height: 620px) {
+  .key {
+    height: 38px;
+    font-size: 1.25rem;
+  }
+  .cat__dot {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+  .entry__submit {
+    min-height: 44px;
+  }
+}
+
+/* ============================================================
+   v4.2: one-line labels and a tighter sheet on shorter phones
+   ============================================================ */
+
+.cat__name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.entry__when {
+  flex-wrap: nowrap;
+}
+
+.entry__when .chip {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.entry__head .icon-btn {
+  height: 40px;
+}
+
+@media (max-height: 720px) {
+  .key {
+    height: 40px;
+  }
+  .keypad {
+    gap: 2px;
+  }
+  .entry,
+  .entry__body {
+    gap: 8px;
+  }
+  .entry__meta {
+    gap: 8px;
+  }
+  .sheet.entry {
+    padding-bottom: calc(10px + var(--safe-b));
+  }
+  .sheet.entry .sheet__grip {
+    margin-top: 0;
+  }
+}
+
+@media (max-height: 660px) {
+  .key {
+    height: 37px;
+    font-size: 1.25rem;
+  }
+  .cat__dot {
+    width: 40px;
+    height: 40px;
+    font-size: 1.15rem;
+  }
+  .cat {
+    gap: 3px;
+  }
+  .cats {
+    gap: 6px 4px;
+  }
+  .entry__submit {
+    min-height: 44px;
+  }
+}
+
+/* Quick picks: name over amount, so neither gets cut */
+.entry__quick .quick__item--two {
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 46px;
+  padding: 4px 12px 4px 10px;
+  border-radius: 14px;
+  text-align: left;
+}
+
+.quick__emoji {
+  font-size: 1.25rem;
+  flex: none;
+}
+
+.quick__col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.quick__col .quick__text {
+  max-width: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.quick__col .quick__amt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-3);
 }

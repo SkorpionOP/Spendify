@@ -1,11 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together on purpose */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Delete, PencilLine, Repeat, Trash2, X } from 'lucide-react';
+import { CalendarDays, ChevronUp, Delete, LayoutGrid, PencilLine, Trash2, X } from 'lucide-react';
 import { CATEGORIES, category as catMeta } from '../lib/categories';
 import { addMonths, monthKey, monthLabel, shortDate, toISODate, today } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
 import { CURRENCIES, catName, getConfig, ordinal, t } from '../lib/i18n';
 import { previewAfter } from '../lib/budget';
+import { useBackClose } from '../lib/backclose';
 import { useStore } from '../lib/store';
 import { useToast } from './Toasts';
 
@@ -14,8 +15,16 @@ const SheetContext = createContext(null);
 export function ExpenseSheetProvider({ children }) {
   // undefined = closed, {} = new, {id,…} = edit. A home-screen shortcut (/?add=1) opens it straight away.
   const [editing, setEditing] = useState(() => (new URLSearchParams(window.location.search).has('add') ? {} : undefined));
-  const open = useCallback((expense = null) => setEditing(expense || {}), []);
-  const close = useCallback(() => setEditing(undefined), []);
+  const onClosed = useCallback(() => setEditing(undefined), []);
+  const { markOpen, requestClose } = useBackClose(editing !== undefined, onClosed);
+
+  const open = useCallback(
+    (expense = null) => {
+      markOpen();
+      setEditing(expense || {});
+    },
+    [markOpen]
+  );
 
   // Keyboard shortcut on desktop: "n" opens a new expense.
   useEffect(() => {
@@ -44,7 +53,7 @@ export function ExpenseSheetProvider({ children }) {
   return (
     <SheetContext.Provider value={open}>
       {children}
-      {editing !== undefined && <ExpenseSheet key={editing.id || 'new'} expense={editing} onClose={close} />}
+      {editing !== undefined && <ExpenseSheet key={editing.id || 'new'} expense={editing} onClose={requestClose} />}
     </SheetContext.Provider>
   );
 }
@@ -82,33 +91,42 @@ const yesterday = () => {
   return toISODate(d);
 };
 
+// Things people usually pay every month — worth offering "make it monthly" after saving.
+const MONTHLY_KINDS = new Set(['Rent', 'Subscriptions', 'Phone', 'Bills', 'Fitness', 'Education']);
+const TOP_SLOTS = 7;
+
 function ExpenseSheet({ expense, onClose }) {
-  const { state, expenses, addExpense, updateExpense, addRecurring } = useStore();
+  const { state, expenses, addExpense, updateExpense, deleteExpense, addRecurring } = useStore();
   const toast = useToast();
   const remove = useDeleteExpense();
   const isEdit = !!expense.id;
   const usesCents = (CURRENCIES.find((c) => c.code === getConfig().currency)?.decimals ?? 0) > 0;
-  const decimalKey = getConfig().locale === 'id-ID' || getConfig().currency === 'IDR' ? ',' : '.';
+  const decimalKey = getConfig().lang === 'id' ? ',' : '.';
 
   const [amount, setAmount] = useState(() => amountToInput(expense.amount));
   const [category, setCategory] = useState(expense.category || expenses[0]?.category || 'Food');
   const [note, setNote] = useState(expense.note || '');
   const [date, setDate] = useState(expense.date || today());
-  const [repeat, setRepeat] = useState(false);
+  const [showAllCats, setShowAllCats] = useState(false);
   const [error, setError] = useState('');
   const amountRef = useRef(null);
-  const catsRef = useRef(null);
 
   const value = parseAmountInput(amount);
   const hasValue = value > 0;
   const isSum = amount.includes('+') && hasValue;
 
-  // Categories she actually uses come first.
+  // The categories she actually uses come first; the rest hide behind "More".
   const orderedCats = useMemo(() => {
     const counts = {};
     for (const e of expenses.slice(0, 300)) counts[e.category] = (counts[e.category] || 0) + 1;
     return [...CATEGORIES].sort((a, b) => (counts[b.name] || 0) - (counts[a.name] || 0));
   }, [expenses]);
+
+  const topCats = useMemo(() => {
+    const top = orderedCats.slice(0, TOP_SLOTS);
+    if (!top.some((c) => c.name === category)) top[TOP_SLOTS - 1] = catMeta(category);
+    return top;
+  }, [orderedCats, category]);
 
   // Most-repeated recent expenses, for one-tap entry.
   const quick = useMemo(() => {
@@ -126,6 +144,23 @@ function ExpenseSheet({ expense, onClose }) {
       .slice(0, 5)
       .map((x) => x.e);
   }, [expenses, isEdit]);
+
+  // Notes she has typed before that match what she's typing now.
+  const noteMatches = useMemo(() => {
+    const needle = note.trim().toLowerCase();
+    if (!needle) return [];
+    const seen = new Set();
+    const out = [];
+    for (const e of expenses) {
+      const n = (e.note || '').trim();
+      const key = n.toLowerCase();
+      if (!n || key === needle || !key.includes(needle) || seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+      if (out.length === 3) break;
+    }
+    return out;
+  }, [expenses, note]);
 
   const preview = useMemo(
     () => (hasValue ? previewAfter(state, { amount: value, date, replacingId: expense.id }) : null),
@@ -145,13 +180,6 @@ function ExpenseSheet({ expense, onClose }) {
     };
   }, [onClose]);
 
-  // Bring the chosen category into view inside its row (never scroll the page).
-  useEffect(() => {
-    const row = catsRef.current;
-    const chip = row?.querySelector('input:checked')?.closest('label');
-    if (row && chip) row.scrollLeft = Math.max(0, chip.offsetLeft - row.clientWidth / 2 + chip.offsetWidth / 2);
-  }, [category]);
-
   const press = (key) => {
     buzz();
     setError('');
@@ -163,12 +191,17 @@ function ExpenseSheet({ expense, onClose }) {
     });
   };
 
-  const pickQuick = (e) => {
+  const fillFrom = (e, { keepAmount = false } = {}) => {
     buzz();
-    setAmount(amountToInput(e.amount));
+    if (!keepAmount || !hasValue) setAmount(amountToInput(e.amount));
     setCategory(e.category);
     setNote(e.note);
     setError('');
+  };
+
+  const pickCategory = (name) => {
+    setCategory(name);
+    setShowAllCats(false);
   };
 
   const submit = (ev) => {
@@ -178,21 +211,48 @@ function ExpenseSheet({ expense, onClose }) {
       return;
     }
     const v = Math.round(value * 100) / 100;
+    const cleanNote = note.trim();
     buzz(15);
+
     if (isEdit) {
       updateExpense(expense.id, { amount: v, category, note, date });
       toast(t('Changes saved'));
       onClose();
       return;
     }
-    addExpense({ amount: v, category, note, date });
-    if (repeat) addRecurring({ amount: v, category, note, day: Number(date.slice(8)), since: addMonths(monthKey(date), 1) });
 
-    if (preview?.fromSavings > 0 && preview.isThisMonth) {
-      toast(t('Added. {amount} came out of savings.', { amount: money(preview.fromSavings) }), { tone: 'warn', duration: 5500 });
-    } else {
-      toast(t('Added {amount} for {category}', { amount: money(v), category: catName(category).toLowerCase() }) + (repeat ? t(', repeats monthly') : ''));
+    const saved = addExpense({ amount: v, category, note, date });
+    const day = Number(date.slice(8));
+    const makeMonthly = () => {
+      addRecurring({ amount: v, category, note: cleanNote, day, since: addMonths(monthKey(date), 1) });
+    };
+
+    // Offer "make it monthly" when it looks like a regular bill and isn't one already.
+    const lastMonth = addMonths(monthKey(date), -1);
+    const seenLastMonth = expenses.some(
+      (e) => monthKey(e.date) === lastMonth && e.category === category && cleanNote && e.note.trim().toLowerCase() === cleanNote.toLowerCase()
+    );
+    const alreadyRule = state.recurring.some((r) => r.category === category && (r.note || '').toLowerCase() === cleanNote.toLowerCase());
+    const offerMonthly = !alreadyRule && (MONTHLY_KINDS.has(category) || seenLastMonth);
+
+    const actions = [];
+    if (offerMonthly) {
+      actions.push({
+        label: t('Make it monthly'),
+        primary: true,
+        onClick: () => {
+          makeMonthly();
+          toast(t('{name} will be added on {day} of each month', { name: cleanNote || catName(category), day: ordinal(day) }));
+        },
+      });
     }
+    actions.push({ label: t('Undo'), onClick: () => deleteExpense(saved.id) });
+
+    const dipped = preview?.fromSavings > 0 && preview.isThisMonth;
+    const message = dipped
+      ? t('Added. {amount} came out of savings.', { amount: money(preview.fromSavings) })
+      : t('Added {amount} for {category}', { amount: money(v), category: catName(category).toLowerCase() });
+    toast(message, { tone: dipped ? 'warn' : 'plain', actions, duration: offerMonthly ? 8000 : 5000 });
     onClose();
   };
 
@@ -222,6 +282,8 @@ function ExpenseSheet({ expense, onClose }) {
     }
   }
 
+  const visibleCats = showAllCats ? orderedCats : topCats;
+
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="sheet entry" role="dialog" aria-modal="true" aria-labelledby="sheet-title" onSubmit={submit}>
@@ -250,130 +312,139 @@ function ExpenseSheet({ expense, onClose }) {
         </header>
 
         <div className="entry__body">
-        {/* Amount */}
-        <div className="entry__amount">
-          <label className="entry__display">
-            <span className="sr-only">{t('Amount')}</span>
-            <span className="entry__symbol" aria-hidden="true">
-              {currencySymbol()}
-            </span>
-            <input
-              ref={amountRef}
-              inputMode="none"
-              autoComplete="off"
-              placeholder="0"
-              value={amount}
-              style={{ fontSize: amount.length > 13 ? '1.75rem' : amount.length > 9 ? '2.25rem' : undefined }}
-              onChange={(e) => {
-                setAmount(formatAmountInput(e.target.value));
-                setError('');
-              }}
-              aria-invalid={!!error}
-              aria-describedby="entry-feedback"
-            />
-            <button type="button" className="entry__plus" onClick={() => press('+')} aria-label="+" disabled={!amount || amount.endsWith('+')}>
-              +
-            </button>
-          </label>
-          <p id="entry-feedback" className={`entry__feedback ${error ? 'is-error' : previewTone}`} aria-live="polite">
-            {error || (
-              <>
-                {isSum && <strong>= {money(value, { precise: true })}. </strong>}
-                {previewText}
-              </>
-            )}
-          </p>
-        </div>
-
-        {quick.length > 0 && !hasValue && (
-          <div className="entry__quick" role="group" aria-label={t('Repeat a frequent expense')}>
-            {quick.map((e) => (
-              <button type="button" key={e.id} className="quick__item" onClick={() => pickQuick(e)}>
-                <span aria-hidden="true">{catMeta(e.category).emoji}</span>
-                <span className="quick__text">{e.note || catName(e.category)}</span>
-                <span className="quick__amt">{money(e.amount)}</span>
+          {/* Amount */}
+          <div className="entry__amount">
+            <label className="entry__display">
+              <span className="sr-only">{t('Amount')}</span>
+              <span className="entry__symbol" aria-hidden="true">
+                {currencySymbol()}
+              </span>
+              <input
+                ref={amountRef}
+                inputMode="none"
+                autoComplete="off"
+                placeholder="0"
+                value={amount}
+                style={{ fontSize: amount.length > 13 ? '1.75rem' : amount.length > 9 ? '2.25rem' : undefined }}
+                onChange={(e) => {
+                  setAmount(formatAmountInput(e.target.value));
+                  setError('');
+                }}
+                aria-invalid={!!error}
+                aria-describedby="entry-feedback"
+              />
+              <button type="button" className="entry__plus" onClick={() => press('+')} aria-label="+" disabled={!amount || amount.endsWith('+')}>
+                +
               </button>
-            ))}
-          </div>
-        )}
-
-        {/* Category: one swipeable row, most-used first */}
-        <fieldset className="entry__cats">
-          <legend className="sr-only">{t('Category')}</legend>
-          <div className="cats" ref={catsRef}>
-            {orderedCats.map((c) => (
-              <label key={c.name} className="cat" style={{ '--cat': c.color }}>
-                <input type="radio" name="category" value={c.name} checked={category === c.name} onChange={() => setCategory(c.name)} />
-                <span className="cat__dot" aria-hidden="true">
-                  {c.emoji}
-                </span>
-                <span className="cat__name">{catName(c.name)}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        {/* Note + when */}
-        <div className="entry__meta">
-          <label className="entry__note">
-            <PencilLine size={18} aria-hidden="true" />
-            <span className="sr-only">{t('Note')}</span>
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('What was it for?')} maxLength={80} enterKeyHint="done" />
-          </label>
-
-          <div className="entry__when" role="group" aria-label={t('Date')}>
-            <button type="button" className={`chip ${date === today() ? 'is-on' : ''}`} aria-pressed={date === today()} onClick={() => setDate(today())}>
-              {t('Today')}
-            </button>
-            <button
-              type="button"
-              className={`chip ${date === yesterday() ? 'is-on' : ''}`}
-              aria-pressed={date === yesterday()}
-              onClick={() => setDate(yesterday())}
-            >
-              {t('Yesterday')}
-            </button>
-            <label className={`chip chip--date ${isOtherDate ? 'is-on' : ''}`}>
-              <CalendarDays size={16} aria-hidden="true" />
-              <span>{isOtherDate ? shortDate(date) : t('Other date')}</span>
-              <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} aria-label={t('Other date')} />
             </label>
-            {!isEdit && (
+            <p id="entry-feedback" className={`entry__feedback ${error ? 'is-error' : previewTone}`} aria-live="polite">
+              {error || (
+                <>
+                  {isSum && <strong>= {money(value, { precise: true })}. </strong>}
+                  {previewText}
+                </>
+              )}
+            </p>
+          </div>
+
+          {/* One-tap repeats of what she logs most */}
+          {quick.length > 0 && !hasValue && (
+            <div className="entry__quick" role="group" aria-label={t('Repeat a frequent expense')}>
+              {quick.slice(0, 2).map((e) => (
+                <button type="button" key={e.id} className="quick__item quick__item--two" onClick={() => fillFrom(e)}>
+                  <span className="quick__emoji" aria-hidden="true">
+                    {catMeta(e.category).emoji}
+                  </span>
+                  <span className="quick__col">
+                    <span className="quick__text">{e.note || catName(e.category)}</span>
+                    <span className="quick__amt">{money(e.amount)}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Category: her top 7 + More. No sideways scrolling. */}
+          <fieldset className="entry__cats">
+            <legend className="sr-only">{t('Category')}</legend>
+            <div className="cats">
+              {visibleCats.map((c) => (
+                <label key={c.name} className="cat" style={{ '--cat': c.color }}>
+                  <input type="radio" name="category" value={c.name} checked={category === c.name} onChange={() => pickCategory(c.name)} />
+                  <span className="cat__dot" aria-hidden="true">
+                    {c.emoji}
+                  </span>
+                  <span className="cat__name">{catName(c.name)}</span>
+                </label>
+              ))}
+              <button type="button" className="cat cat--more" onClick={() => setShowAllCats((v) => !v)} aria-expanded={showAllCats}>
+                <span className="cat__dot" aria-hidden="true">
+                  {showAllCats ? <ChevronUp size={22} /> : <LayoutGrid size={20} />}
+                </span>
+                <span className="cat__name">{showAllCats ? t('Show fewer') : t('More')}</span>
+              </button>
+            </div>
+          </fieldset>
+
+          {/* Note + when */}
+          <div className="entry__meta">
+            <label className="entry__note">
+              <PencilLine size={18} aria-hidden="true" />
+              <span className="sr-only">{t('Note')}</span>
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('What was it for?')} maxLength={80} enterKeyHint="done" />
+            </label>
+            {noteMatches.length > 0 && (
+              <div className="entry__suggest" role="group" aria-label={t('From your history')}>
+                {noteMatches.map((e) => (
+                  <button type="button" key={e.id} className="quick__item" onClick={() => fillFrom(e, { keepAmount: true })}>
+                    <span aria-hidden="true">{catMeta(e.category).emoji}</span>
+                    <span className="quick__text">{e.note}</span>
+                    <span className="quick__amt">{money(e.amount)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="entry__when" role="group" aria-label={t('Date')}>
+              <button type="button" className={`chip ${date === today() ? 'is-on' : ''}`} aria-pressed={date === today()} onClick={() => setDate(today())}>
+                {t('Today')}
+              </button>
               <button
                 type="button"
-                className={`chip ${repeat ? 'is-on' : ''}`}
-                aria-pressed={repeat}
-                onClick={() => setRepeat((r) => !r)}
-                title={t('Repeat every month on {day}', { day: ordinal(Number(date.slice(8))) })}
+                className={`chip ${date === yesterday() ? 'is-on' : ''}`}
+                aria-pressed={date === yesterday()}
+                onClick={() => setDate(yesterday())}
               >
-                <Repeat size={15} aria-hidden="true" /> {t('Every month')}
+                {t('Yesterday')}
               </button>
+              <label className={`chip chip--date ${isOtherDate ? 'is-on' : ''}`}>
+                <CalendarDays size={16} aria-hidden="true" />
+                <span>{isOtherDate ? shortDate(date) : t('Other date')}</span>
+                <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} aria-label={t('Other date')} />
+              </label>
+            </div>
+            {isEdit && expense.recurringId && (
+              <p className="entry__hint">{t('Added automatically from a monthly repeat. Manage repeats from Home.')}</p>
             )}
           </div>
-          {repeat && <p className="entry__hint">{t('Repeat every month on {day}', { day: ordinal(Number(date.slice(8))) })}</p>}
-          {isEdit && expense.recurringId && (
-            <p className="entry__hint">{t('Added automatically from a monthly repeat. Manage repeats from Home.')}</p>
-          )}
-        </div>
-
         </div>
 
         {/* Pinned footer: keypad + save are always visible, whatever the phone size */}
         <div className="entry__foot">
-        <div className="keypad">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', usesCents ? decimalKey : '000', '0'].map((k) => (
-            <button type="button" key={k} className="key" onClick={() => press(k)}>
-              {k}
+          <div className="keypad">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', usesCents ? decimalKey : '000', '0'].map((k) => (
+              <button type="button" key={k} className="key" onClick={() => press(k)}>
+                {k}
+              </button>
+            ))}
+            <button type="button" className="key key--tool" onClick={() => press('back')} aria-label={t('Delete')}>
+              <Delete size={24} />
             </button>
-          ))}
-          <button type="button" className="key key--tool" onClick={() => press('back')} aria-label={t('Delete')}>
-            <Delete size={24} />
-          </button>
-        </div>
+          </div>
 
-        <button type="submit" className="btn btn--primary btn--block entry__submit">
-          {saveLabel}
-        </button>
+          <button type="submit" className="btn btn--primary btn--block entry__submit">
+            {saveLabel}
+          </button>
         </div>
       </form>
     </div>

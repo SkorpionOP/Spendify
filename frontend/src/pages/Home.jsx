@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CalendarClock, Check, CircleHelp, Plus, Settings, Wallet } from 'lucide-react';
-import { useStore } from '../lib/store';
+import { AlertTriangle, CalendarClock, Check, CircleHelp, Eye, EyeOff, Plus, Settings, Wallet, X } from 'lucide-react';
+import { monthSummary, useStore } from '../lib/store';
+import { useBackClose } from '../lib/backclose';
 import { monthPicture } from '../lib/budget';
-import { currentMonth, greeting, monthKey, monthLabel, shortDate } from '../lib/dates';
+import { addMonths, currentMonth, greeting, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
 import { category } from '../lib/categories';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
@@ -21,9 +22,16 @@ const STATUS = {
 };
 
 export default function Home() {
-  const { state, expenses } = useStore();
+  const { state, expenses, updateSettings } = useStore();
   const open = useExpenseSheet();
   const [panel, setPanel] = useState(null); // 'topup' | 'repeats' | 'help' | null
+  const onPanelClosed = useCallback(() => setPanel(null), []);
+  const { markOpen, requestClose } = useBackClose(panel !== null, onPanelClosed);
+  const openPanel = (name) => {
+    markOpen();
+    setPanel(name);
+  };
+  const hidden = !!state.settings.hideAmounts;
   const key = currentMonth();
   const p = useMemo(() => monthPicture(state), [state]);
   const monthName = monthLabel(key, { month: 'long' });
@@ -34,6 +42,43 @@ export default function Home() {
   const top = topName ? { name: topName, total: topTotal } : null;
 
   const recent = expenses.slice(0, 8);
+
+  // Days in a row with at least one expense logged (today doesn't break the streak until it's over).
+  const streak = useMemo(() => {
+    const days = new Set(expenses.map((e) => e.date));
+    const d = new Date();
+    if (!days.has(toISODate(d))) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (days.has(toISODate(d))) {
+      n++;
+      d.setDate(d.getDate() - 1);
+    }
+    return n;
+  }, [expenses]);
+
+  // In the first week of a month, a one-time look back at the month that just ended.
+  const prevKey = addMonths(key, -1);
+  const [recapSeen, setRecapSeen] = useState(() => {
+    try {
+      return localStorage.getItem('spendify:recap') === prevKey;
+    } catch {
+      return false;
+    }
+  });
+  const [dayOfMonth] = useState(() => new Date().getDate());
+  let recap = null;
+  if (!recapSeen && dayOfMonth <= 7 && state.startMonth <= prevKey) {
+    const m = monthSummary(state, prevKey);
+    if (m && m.month === prevKey && m.budget > 0 && m.spent > 0) recap = m;
+  }
+  const dismissRecap = () => {
+    try {
+      localStorage.setItem('spendify:recap', prevKey);
+    } catch {
+      /* ignore */
+    }
+    setRecapSeen(true);
+  };
   const nextRepeat = upcomingRepeats(state.recurring)[0];
   const repeatHint = nextRepeat
     ? t('Next: {name}, {date}', { name: nextRepeat.note || catName(nextRepeat.category), date: shortDate(nextRepeat.next) })
@@ -50,7 +95,7 @@ export default function Home() {
   const todayOver = p.todayLeft < 0;
 
   return (
-    <div className="page home">
+    <div className={`page home ${hidden ? 'is-private' : ''}`}>
       <header className="home__head">
         <div>
           <p className="home__hello">{greeting()},</p>
@@ -58,11 +103,43 @@ export default function Home() {
         </div>
         <div className="home__tools">
           <LangSwitch />
+          <button
+            className="icon-btn"
+            onClick={() => updateSettings({ hideAmounts: !hidden })}
+            aria-pressed={hidden}
+            aria-label={hidden ? t('Show amounts') : t('Hide amounts')}
+          >
+            {hidden ? <EyeOff size={21} /> : <Eye size={21} />}
+          </button>
           <Link to="/settings" className="icon-btn home__settings" aria-label={t('Settings')}>
             <Settings size={22} />
           </Link>
         </div>
       </header>
+
+      {streak >= 3 && (
+        <p className="streak">
+          <span aria-hidden="true">🔥</span> {t('streak', { n: streak })}
+        </p>
+      )}
+
+      {recap && (
+        <section className="nudge nudge--recap" aria-labelledby="recap-title">
+          <button className="icon-btn icon-btn--sm nudge__close" onClick={dismissRecap} aria-label={t('Got it')}>
+            <X size={16} />
+          </button>
+          <h2 id="recap-title" className="nudge__title">
+            {t('{month} recap', { month: monthLabel(prevKey, { month: 'long' }) })}
+          </h2>
+          <p className="nudge__body">
+            {recap.spent > recap.budget
+              ? t('recap-over', { spent: money(recap.spent), over: money(recap.spent - recap.budget), budget: money(recap.budget) })
+              : recap.leftBudget > 0
+                ? t('recap-saved', { spent: money(recap.spent), budget: money(recap.budget), left: money(recap.leftBudget) })
+                : t('recap-exact', { spent: money(recap.spent) })}
+          </p>
+        </section>
+      )}
 
       {/* 1. How much can I still spend this month? */}
       <section className={`month-card is-${p.status}`} aria-labelledby="month-label">
@@ -70,7 +147,7 @@ export default function Home() {
           <p id="month-label" className="month-card__label">
             {t('Money left this month')}
           </p>
-          <button className="icon-btn icon-btn--sm" onClick={() => setPanel('help')} aria-label={t('How this works')}>
+          <button className="icon-btn icon-btn--sm" onClick={() => openPanel('help')} aria-label={t('How this works')}>
             <CircleHelp size={18} />
           </button>
         </div>
@@ -145,7 +222,7 @@ export default function Home() {
       </div>
 
       <div className="actions">
-        <button className="action" onClick={() => setPanel('topup')}>
+        <button className="action" onClick={() => openPanel('topup')}>
           <span className="action__icon action__icon--money" aria-hidden="true">
             <Wallet size={20} />
           </span>
@@ -154,7 +231,7 @@ export default function Home() {
             <span className="action__hint">{t('Bonus, gift or refund')}</span>
           </span>
         </button>
-        <button className="action" onClick={() => setPanel('repeats')}>
+        <button className="action" onClick={() => openPanel('repeats')}>
           <span className="action__icon" aria-hidden="true">
             <CalendarClock size={20} />
           </span>
@@ -169,17 +246,17 @@ export default function Home() {
       </div>
 
       {panel === 'topup' && (
-        <Sheet title={t('Add money')} onClose={() => setPanel(null)}>
-          <TopupPanel onDone={() => setPanel(null)} />
+        <Sheet title={t('Add money')} onClose={requestClose}>
+          <TopupPanel onDone={requestClose} />
         </Sheet>
       )}
       {panel === 'repeats' && (
-        <Sheet title={t('Monthly repeats')} onClose={() => setPanel(null)}>
+        <Sheet title={t('Monthly repeats')} onClose={requestClose}>
           <RepeatsPanel />
         </Sheet>
       )}
       {panel === 'help' && (
-        <Sheet title={t('How this works')} onClose={() => setPanel(null)}>
+        <Sheet title={t('How this works')} onClose={requestClose}>
           <div className="explain">
             <p>{t('how-1')}</p>
             <p>{t('how-2')}</p>

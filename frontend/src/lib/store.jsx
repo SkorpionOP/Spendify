@@ -38,7 +38,7 @@ const empty = () => ({
   topups: {},
   expenses: [],
   recurring: [],
-  settings: { theme: 'system', lang: defaultLang(), currency: 'IDR' },
+  settings: { theme: 'system', lang: defaultLang(), currency: 'IDR', hideAmounts: false },
   startMonth: currentMonth(),
   savedAt: 0,
   lastBackupAt: null,
@@ -59,6 +59,7 @@ export const normalize = (raw) => {
     : [];
   s.recurring = Array.isArray(s.recurring) ? s.recurring : [];
   s.settings = { ...base.settings, ...(s.settings || {}) };
+  s.settings.hideAmounts = !!s.settings.hideAmounts;
   return s;
 };
 

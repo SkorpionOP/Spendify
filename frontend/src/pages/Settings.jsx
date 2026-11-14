@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, Download, History as HistoryIcon, Share, ShieldCheck, ShieldAlert, Upload } from 'lucide-react';
+import { ChevronLeft, Download, Eye, EyeOff, History as HistoryIcon, Share, ShieldCheck, ShieldAlert, Upload } from 'lucide-react';
 import { planFor, useStore } from '../lib/store';
 import { currentMonth, dateTime } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, parseAmountInput } from '../lib/format';
@@ -130,6 +130,22 @@ export default function Settings() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="field">
+          <span className="field-label">{t('Privacy')}</span>
+          <button
+            type="button"
+            className={`btn btn--ghost btn--block ${state.settings.hideAmounts ? 'is-on' : ''}`}
+            onClick={() => updateSettings({ hideAmounts: !state.settings.hideAmounts })}
+            aria-pressed={!!state.settings.hideAmounts}
+          >
+            {state.settings.hideAmounts ? <EyeOff size={18} /> : <Eye size={18} />}
+            {state.settings.hideAmounts ? t('Amounts are hidden') : t('Hide amounts in public')}
+          </button>
+          <span className="muted small">
+            {t('Blurs numbers across the app so people nearby cannot see your finances.')}
+          </span>
         </div>
       </section>
 

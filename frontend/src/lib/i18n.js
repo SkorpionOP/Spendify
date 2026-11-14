@@ -686,3 +686,43 @@ Object.assign(DICT.id, { 'Every month': 'Tiap bulan', 'Other date': 'Tanggal lai
 
 Object.assign(DICT.en, { 'preview-short': 'Not enough money: this is {amount} more than your budget and savings together.' });
 Object.assign(DICT.id, { 'preview-short': 'Uangnya tidak cukup: ini {amount} lebih besar dari sisa anggaran dan tabunganmu.' });
+
+/* ---------- v4: category grid, smart prompts, streak, recap, privacy ---------- */
+Object.assign(DICT.en, {
+  More: 'More',
+  'Show fewer': 'Show fewer',
+  'From your history': 'From your history',
+  'Make it monthly': 'Make it monthly',
+  'Hide amounts': 'Hide amounts',
+  'Show amounts': 'Show amounts',
+  'streak': '{n} days in a row of tracking. Keep it going!',
+  '{month} recap': 'How {month} went',
+  'recap-saved': 'You spent {spent} of your {budget} budget. The {left} you didn’t spend went into savings.',
+  'recap-exact': 'You spent {spent}, exactly your budget.',
+  'recap-over': 'You spent {spent}, which is {over} more than your {budget} budget. The extra came out of savings.',
+  'Got it': 'Got it',
+  Privacy: 'Privacy',
+  'Hide amounts in public': 'Hide amounts in public',
+  'Amounts are hidden': 'Amounts are hidden (tap to show)',
+  'Blurs numbers across the app so people nearby cannot see your finances.':
+    'Blurs numbers across the app so people nearby cannot see your finances.',
+});
+Object.assign(DICT.id, {
+  More: 'Lainnya',
+  'Show fewer': 'Tutup',
+  'From your history': 'Dari catatanmu',
+  'Make it monthly': 'Jadikan rutin',
+  'Hide amounts': 'Sembunyikan nominal',
+  'Show amounts': 'Tampilkan nominal',
+  'streak': 'Rajin banget! {n} hari berturut-turut mencatat.',
+  '{month} recap': 'Rekap bulan {month}',
+  'recap-saved': 'Kamu pakai {spent} dari anggaran {budget}. Sisa {left} masuk ke tabungan.',
+  'recap-exact': 'Kamu pakai {spent}, pas dengan anggaranmu.',
+  'recap-over': 'Kamu pakai {spent}, lebih {over} dari anggaran {budget}. Kelebihannya diambil dari tabungan.',
+  'Got it': 'Oke',
+  Privacy: 'Privasi',
+  'Hide amounts in public': 'Sembunyikan nominal di tempat umum',
+  'Amounts are hidden': 'Nominal disembunyikan (ketuk untuk melihat)',
+  'Blurs numbers across the app so people nearby cannot see your finances.':
+    'Memburamkan angka di seluruh aplikasi agar orang sekitar tidak melihat keuanganmu.',
+});

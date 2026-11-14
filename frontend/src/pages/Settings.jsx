@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, Download, Eye, EyeOff, History as HistoryIcon, Share, ShieldCheck, ShieldAlert, Upload } from 'lucide-react';
+import { Bell, BellOff, ChevronLeft, Download, Eye, EyeOff, History as HistoryIcon, Share, ShieldCheck, ShieldAlert, Upload } from 'lucide-react';
+import { isNotificationSupported, requestNotificationPermission } from '../lib/notifications';
 import { planFor, useStore } from '../lib/store';
 import { currentMonth, dateTime } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, parseAmountInput } from '../lib/format';
@@ -147,6 +148,37 @@ export default function Settings() {
             {t('Blurs numbers across the app so people nearby cannot see your finances.')}
           </span>
         </div>
+
+        {isNotificationSupported() && (
+          <div className="field">
+            <span className="field-label">{t('Notifications')}</span>
+            <button
+              type="button"
+              className={`btn btn--ghost btn--block ${state.settings.notifyRecurring ? 'is-on' : ''}`}
+              onClick={async () => {
+                if (!state.settings.notifyRecurring) {
+                  const granted = await requestNotificationPermission();
+                  if (granted) {
+                    updateSettings({ notifyRecurring: true });
+                    toast(t('Repeat notifications enabled'));
+                  } else {
+                    toast(t('Notifications were blocked in your browser.'), { tone: 'warn' });
+                  }
+                } else {
+                  updateSettings({ notifyRecurring: false });
+                  toast(t('Repeat notifications paused'));
+                }
+              }}
+              aria-pressed={!!state.settings.notifyRecurring}
+            >
+              {state.settings.notifyRecurring ? <Bell size={18} /> : <BellOff size={18} />}
+              {state.settings.notifyRecurring ? t('Remind me when repeats occur') : t('Enable repeat notifications')}
+            </button>
+            <span className="muted small">
+              {t('Get a device notification whenever a monthly repeat is added or due.')}
+            </span>
+          </div>
+        )}
       </section>
 
       <form className="card section" onSubmit={savePlan}>

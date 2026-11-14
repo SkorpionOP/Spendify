@@ -38,7 +38,7 @@ const empty = () => ({
   topups: {},
   expenses: [],
   recurring: [],
-  settings: { theme: 'system', lang: defaultLang(), currency: 'IDR', hideAmounts: false },
+  settings: { theme: 'system', lang: defaultLang(), currency: 'IDR', hideAmounts: false, notifyRecurring: false },
   startMonth: currentMonth(),
   savedAt: 0,
   lastBackupAt: null,
@@ -57,9 +57,16 @@ export const normalize = (raw) => {
         .filter((e) => e && Number(e.amount) > 0 && typeof e.date === 'string')
         .map((e) => ({ ...e, amount: Number(e.amount), note: e.note || '', category: e.category || 'Others' }))
     : [];
-  s.recurring = Array.isArray(s.recurring) ? s.recurring : [];
+  s.recurring = Array.isArray(s.recurring)
+    ? s.recurring.map((r) => ({
+        ...r,
+        mandatory: r.mandatory !== false,
+        skippedMonths: Array.isArray(r.skippedMonths) ? r.skippedMonths : [],
+      }))
+    : [];
   s.settings = { ...base.settings, ...(s.settings || {}) };
   s.settings.hideAmounts = !!s.settings.hideAmounts;
+  s.settings.notifyRecurring = !!s.settings.notifyRecurring;
   return s;
 };
 
@@ -110,7 +117,7 @@ export const monthSummary = (state, key) => {
 /* ---------- recurring ---------- */
 
 /** Adds any recurring expenses that have come due. Returns the same object if nothing changed. */
-export const applyRecurring = (state) => {
+export const applyRecurring = (state, onAdded = null) => {
   if (!state.recurring?.length) return state;
   const now = currentMonth();
   const dayNow = new Date().getDate();
@@ -118,23 +125,27 @@ export const applyRecurring = (state) => {
   const recurring = state.recurring.map((r) => {
     let m = r.lastRun ? addMonths(r.lastRun, 1) : r.since;
     let lastRun = r.lastRun;
+    const skipped = new Set(r.skippedMonths || []);
     for (let i = 0; i < 120 && m <= now; i++, m = addMonths(m, 1)) {
       const day = Math.min(r.day, daysInMonth(m));
       if (m === now && day > dayNow) break;
-      added.push({
-        id: uid(),
-        amount: r.amount,
-        category: r.category,
-        note: r.note,
-        date: `${m}-${String(day).padStart(2, '0')}`,
-        createdAt: Date.now() + i,
-        recurringId: r.id,
-      });
+      if (!skipped.has(m)) {
+        added.push({
+          id: uid(),
+          amount: r.amount,
+          category: r.category,
+          note: r.note,
+          date: `${m}-${String(day).padStart(2, '0')}`,
+          createdAt: Date.now() + i,
+          recurringId: r.id,
+        });
+      }
       lastRun = m;
     }
     return lastRun === r.lastRun ? r : { ...r, lastRun };
   });
   if (!added.length) return state;
+  if (onAdded) onAdded(added);
   return { ...state, recurring, expenses: [...added, ...state.expenses] };
 };
 
@@ -153,6 +164,11 @@ export function StoreProvider({ children }) {
   // If localStorage had our data we can render immediately; otherwise check the IndexedDB mirror first.
   const [ready, setReady] = useState(() => hasData(initial.state));
   const [recovered, setRecovered] = useState(null);
+  const [autoAdded, setAutoAdded] = useState([]);
+  const clearAutoAdded = useCallback(() => setAutoAdded([]), []);
+  const onAutoAdded = useCallback((added) => {
+    if (added?.length) setAutoAdded((prev) => [...prev, ...added]);
+  }, []);
   const latest = useRef(state);
   // Language/currency are read by the formatting helpers; keep them in step with settings.
   configure(state.settings);
@@ -175,7 +191,7 @@ export function StoreProvider({ children }) {
       if (cancelled) return;
       const local = initial.state;
       if (hasData(mirror) && (!hasData(local) || (mirror.savedAt || 0) > (local.savedAt || 0))) {
-        setStateRaw(applyRecurring(normalize(mirror)));
+        setStateRaw(applyRecurring(normalize(mirror), onAutoAdded));
         if (!hasData(local)) {
           setRecovered(
             initial.corrupt
@@ -191,7 +207,7 @@ export function StoreProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [initial]);
+  }, [initial, onAutoAdded]);
 
   // Persist every change to both stores.
   useEffect(() => {
@@ -208,7 +224,7 @@ export function StoreProvider({ children }) {
     const flush = () => canWrite.current && writeLocal(latest.current);
     const onVis = () => {
       if (document.visibilityState === 'hidden') flush();
-      else setState((s) => applyRecurring(s));
+      else setState((s) => applyRecurring(s, onAutoAdded));
     };
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onVis);
@@ -216,7 +232,7 @@ export function StoreProvider({ children }) {
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [setState]);
+  }, [onAutoAdded, setState]);
 
   // Keep multiple open tabs in sync
   useEffect(() => {
@@ -311,22 +327,69 @@ export function StoreProvider({ children }) {
   );
 
   const addRecurring = useCallback(
-    ({ amount, category, note, day, since: sinceIn }) => {
+    ({ amount, category, note, day, mandatory = true, since: sinceIn }) => {
       const d = Math.min(31, Math.max(1, Number(day) || 1));
-      // If this month's date has already passed, start next month rather than back-filling.
-      const since = sinceIn || (d < new Date().getDate() ? addMonths(currentMonth(), 1) : currentMonth());
+      const now = currentMonth();
+      const thisDay = new Date().getDate();
+      const since = sinceIn || (d < thisDay ? addMonths(now, 1) : now);
+      const rule = {
+        id: uid(),
+        amount: Number(amount),
+        category,
+        note: (note || '').trim(),
+        day: d,
+        mandatory: mandatory !== false,
+        skippedMonths: [],
+        since,
+        lastRun: null,
+      };
       setState((s) =>
-        applyRecurring({
-          ...s,
-          recurring: [...s.recurring, { id: uid(), amount: Number(amount), category, note: (note || '').trim(), day: d, since, lastRun: null }],
-        })
+        applyRecurring(
+          {
+            ...s,
+            recurring: [...s.recurring, rule],
+          },
+          onAutoAdded
+        )
       );
+      return rule;
     },
-    [setState]
+    [setState, onAutoAdded]
   );
 
   const removeRecurring = useCallback(
     (id) => setState((s) => ({ ...s, recurring: s.recurring.filter((r) => r.id !== id) })),
+    [setState]
+  );
+
+  const toggleSkipRecurring = useCallback(
+    (id, monthKey = currentMonth()) =>
+      setState((s) => {
+        const target = s.recurring.find((r) => r.id === id);
+        if (!target) return s;
+        const skipped = new Set(target.skippedMonths || []);
+        const willSkip = !skipped.has(monthKey);
+        if (willSkip) skipped.add(monthKey);
+        else skipped.delete(monthKey);
+
+        const newRecurring = s.recurring.map((r) => (r.id === id ? { ...r, skippedMonths: [...skipped] } : r));
+        let newExpenses = s.expenses;
+        if (willSkip) {
+          newExpenses = s.expenses.filter((e) => !(e.recurringId === id && e.date.slice(0, 7) === monthKey));
+        }
+
+        const nextState = { ...s, recurring: newRecurring, expenses: newExpenses };
+        return willSkip ? nextState : applyRecurring(nextState, onAutoAdded);
+      }),
+    [setState, onAutoAdded]
+  );
+
+  const updateRecurring = useCallback(
+    (id, patch) =>
+      setState((s) => ({
+        ...s,
+        recurring: s.recurring.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+      })),
     [setState]
   );
 
@@ -380,6 +443,8 @@ export function StoreProvider({ children }) {
     ready,
     recovered,
     clearRecovered,
+    autoAddedRecurring: autoAdded,
+    clearAutoAdded,
     setup,
     updateProfile,
     updateSettings,
@@ -391,6 +456,8 @@ export function StoreProvider({ children }) {
     restoreExpense,
     addRecurring,
     removeRecurring,
+    toggleSkipRecurring,
+    updateRecurring,
     exportData,
     markBackedUp,
     importData,

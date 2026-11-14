@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { StoreProvider, useStore } from './lib/store';
 import { ToastProvider, useToast } from './components/Toasts';
-import { t } from './lib/i18n';
+import { catName, t } from './lib/i18n';
+import { money } from './lib/format';
+import { sendNotification } from './lib/notifications';
 import { ExpenseSheetProvider } from './components/ExpenseSheet';
 import { AppShell } from './components/AppShell';
 import Onboarding from './pages/Onboarding';
@@ -23,7 +25,7 @@ function useTheme(theme) {
 }
 
 function Routed() {
-  const { state, ready, recovered, clearRecovered } = useStore();
+  const { state, ready, recovered, clearRecovered, autoAddedRecurring, clearAutoAdded } = useStore();
   const toast = useToast();
   useTheme(state.settings.theme);
   useEffect(() => {
@@ -36,6 +38,26 @@ function Routed() {
       clearRecovered();
     }
   }, [recovered, toast, clearRecovered]);
+
+  useEffect(() => {
+    if (autoAddedRecurring && autoAddedRecurring.length > 0) {
+      const names = autoAddedRecurring
+        .slice(0, 3)
+        .map((e) => e.note || catName(e.category))
+        .join(', ');
+      const total = autoAddedRecurring.reduce((s, e) => s + e.amount, 0);
+      const msg = t('Added {count} monthly repeat: {names} ({total})', {
+        count: autoAddedRecurring.length,
+        names: names + (autoAddedRecurring.length > 3 ? '…' : ''),
+        total: money(total),
+      });
+      toast(msg, { duration: 7000 });
+      if (state.settings?.notifyRecurring) {
+        sendNotification(t('Spendify: Monthly repeat added'), { body: msg });
+      }
+      clearAutoAdded();
+    }
+  }, [autoAddedRecurring, clearAutoAdded, state.settings?.notifyRecurring, toast]);
 
   if (!ready) return <div className="splash" aria-label={t('Loading')} />;
   if (!state.profile) return <Onboarding />;

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together on purpose */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronUp, Delete, LayoutGrid, PencilLine, Trash2, X } from 'lucide-react';
+import { CalendarDays, ChevronUp, Delete, LayoutGrid, PencilLine, Repeat, Trash2, X } from 'lucide-react';
 import { CATEGORIES, category as catMeta } from '../lib/categories';
 import { addMonths, monthKey, monthLabel, shortDate, toISODate, today } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
@@ -107,9 +107,21 @@ function ExpenseSheet({ expense, onClose }) {
   const [category, setCategory] = useState(expense.category || expenses[0]?.category || 'Food');
   const [note, setNote] = useState(expense.note || '');
   const [date, setDate] = useState(expense.date || today());
+  const [repeat, setRepeat] = useState(false);
+  const [repeatMandatory, setRepeatMandatory] = useState(() => MONTHLY_KINDS.has(expense.category || 'Food'));
   const [showAllCats, setShowAllCats] = useState(false);
   const [error, setError] = useState('');
   const amountRef = useRef(null);
+
+  const linkedRule = isEdit && expense.recurringId ? state.recurring.find((r) => r.id === expense.recurringId) : null;
+  const matchingRule = useMemo(() => {
+    if (linkedRule) return null;
+    const clean = note.trim().toLowerCase();
+    if (!clean && !MONTHLY_KINDS.has(category)) return null;
+    return state.recurring.find(
+      (r) => r.category === category && (!clean || (r.note || '').trim().toLowerCase() === clean)
+    );
+  }, [state.recurring, category, note, linkedRule]);
 
   const value = parseAmountInput(amount);
   const hasValue = value > 0;
@@ -223,17 +235,36 @@ function ExpenseSheet({ expense, onClose }) {
 
     const saved = addExpense({ amount: v, category, note, date });
     const day = Number(date.slice(8));
+    const nextStartMonth = addMonths(monthKey(date), 1);
+    if (repeat) {
+      addRecurring({
+        amount: v,
+        category,
+        note: cleanNote,
+        day,
+        mandatory: repeatMandatory,
+        since: nextStartMonth,
+      });
+    }
+
     const makeMonthly = () => {
-      addRecurring({ amount: v, category, note: cleanNote, day, since: addMonths(monthKey(date), 1) });
+      addRecurring({
+        amount: v,
+        category,
+        note: cleanNote,
+        day,
+        mandatory: repeatMandatory,
+        since: nextStartMonth,
+      });
     };
 
-    // Offer "make it monthly" when it looks like a regular bill and isn't one already.
+    // Offer "make it monthly" when it looks like a regular bill and wasn't set to repeat already.
     const lastMonth = addMonths(monthKey(date), -1);
     const seenLastMonth = expenses.some(
       (e) => monthKey(e.date) === lastMonth && e.category === category && cleanNote && e.note.trim().toLowerCase() === cleanNote.toLowerCase()
     );
     const alreadyRule = state.recurring.some((r) => r.category === category && (r.note || '').toLowerCase() === cleanNote.toLowerCase());
-    const offerMonthly = !alreadyRule && (MONTHLY_KINDS.has(category) || seenLastMonth);
+    const offerMonthly = !repeat && !alreadyRule && (MONTHLY_KINDS.has(category) || seenLastMonth);
 
     const actions = [];
     if (offerMonthly) {
@@ -249,9 +280,10 @@ function ExpenseSheet({ expense, onClose }) {
     actions.push({ label: t('Undo'), onClick: () => deleteExpense(saved.id) });
 
     const dipped = preview?.fromSavings > 0 && preview.isThisMonth;
-    const message = dipped
+    let message = dipped
       ? t('Added. {amount} came out of savings.', { amount: money(preview.fromSavings) })
       : t('Added {amount} for {category}', { amount: money(v), category: catName(category).toLowerCase() });
+    if (repeat) message += t(', repeats monthly');
     toast(message, { tone: dipped ? 'warn' : 'plain', actions, duration: offerMonthly ? 8000 : 5000 });
     onClose();
   };
@@ -423,8 +455,55 @@ function ExpenseSheet({ expense, onClose }) {
                 <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} aria-label={t('Other date')} />
               </label>
             </div>
-            {isEdit && expense.recurringId && (
-              <p className="entry__hint">{t('Added automatically from a monthly repeat. Manage repeats from Home.')}</p>
+
+            {!isEdit && (
+              <div className="entry__repeats-row">
+                <button
+                  type="button"
+                  className={`chip ${repeat ? 'is-on' : ''}`}
+                  aria-pressed={repeat}
+                  onClick={() => setRepeat((r) => !r)}
+                  title={t('Repeat every month on {day}', { day: ordinal(Number(date.slice(8))) })}
+                >
+                  <Repeat size={15} aria-hidden="true" /> {t('Repeat monthly')}
+                </button>
+                {repeat && (
+                  <button
+                    type="button"
+                    className={`chip ${repeatMandatory ? 'is-on' : ''}`}
+                    onClick={() => setRepeatMandatory((m) => !m)}
+                  >
+                    {repeatMandatory ? t('Mandatory') : t('Flexible')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {repeat && !isEdit && (
+              <p className="entry__hint entry__hint--repeat">
+                🔁 {t('Will repeat every month on {day}, starting {month}.', {
+                  day: ordinal(Number(date.slice(8))),
+                  month: monthLabel(addMonths(monthKey(date), 1), { month: 'long' }),
+                })}
+              </p>
+            )}
+
+            {matchingRule && !isEdit && !repeat && (
+              <p className="entry__hint entry__hint--info">
+                ℹ️ {t('Matches monthly repeat: {name} (scheduled on {day})', {
+                  name: matchingRule.note || catName(matchingRule.category),
+                  day: ordinal(matchingRule.day),
+                })}
+              </p>
+            )}
+
+            {linkedRule && (
+              <p className="entry__hint entry__hint--info">
+                🔁 {t('Added from monthly repeat "{name}" ({status})', {
+                  name: linkedRule.note || catName(linkedRule.category),
+                  status: linkedRule.mandatory !== false ? t('Mandatory') : t('Flexible'),
+                })}
+              </p>
             )}
           </div>
         </div>

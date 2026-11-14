@@ -79,10 +79,31 @@ export default function Home() {
     }
     setRecapSeen(true);
   };
+  const curKey = currentMonth();
   const nextRepeat = upcomingRepeats(state.recurring)[0];
-  const repeatHint = nextRepeat
-    ? t('Next: {name}, {date}', { name: nextRepeat.note || catName(nextRepeat.category), date: shortDate(nextRepeat.next) })
-    : t('Rent, subscriptions, bills');
+  const nextIsMandatory = nextRepeat ? nextRepeat.mandatory !== false : false;
+  const skippedCount = state.recurring.filter((r) => (r.skippedMonths || []).includes(curKey)).length;
+  const dueRepeats = state.recurring.filter(
+    (r) => !(r.skippedMonths || []).includes(curKey) && !expenses.some((e) => e.recurringId === r.id && monthKey(e.date) === curKey)
+  );
+  const dueTotal = dueRepeats.reduce((s, r) => s + r.amount, 0);
+
+  let repeatHint = t('Rent, subscriptions, bills');
+  if (nextRepeat) {
+    const nextName = nextRepeat.note || catName(nextRepeat.category);
+    const dateStr = shortDate(nextRepeat.next);
+    if (dueTotal > 0) {
+      repeatHint = t('Next: {name}, {date} • {amount} due this month', {
+        name: nextName,
+        date: dateStr,
+        amount: money(dueTotal),
+      });
+    } else {
+      repeatHint = t('Next: {name}, {date}', { name: nextName, date: dateStr });
+    }
+  } else if (state.recurring.length > 0) {
+    repeatHint = t('All {count} repeats settled for this month', { count: state.recurring.length });
+  }
 
   const st = STATUS[p.status];
   const statusLine =
@@ -237,8 +258,18 @@ export default function Home() {
           </span>
           <span className="action__text">
             <span className="action__title">
-              {t('Monthly repeats')}
+              <span>{t('Monthly repeats')}</span>
               {state.recurring.length > 0 && <span className="badge">{state.recurring.length}</span>}
+              {nextRepeat && (
+                <span className={`badge badge--sm ${nextIsMandatory ? 'badge--mandatory' : 'badge--flexible'}`}>
+                  {nextIsMandatory ? t('Mandatory') : t('Flexible')}
+                </span>
+              )}
+              {skippedCount > 0 && (
+                <span className="badge badge--sm badge--warn">
+                  {t('{n} skipped', { n: skippedCount })}
+                </span>
+              )}
             </span>
             <span className="action__hint">{repeatHint}</span>
           </span>

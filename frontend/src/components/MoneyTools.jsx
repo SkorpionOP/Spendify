@@ -65,8 +65,12 @@ export function TopupPanel({ onDone }) {
 /** Next date a repeat will be added, as 'YYYY-MM-DD'. */
 export const nextRun = (r) => {
   const now = currentMonth();
+  const skipped = new Set(r.skippedMonths || []);
   let m = r.lastRun ? addMonths(r.lastRun, 1) : r.since;
   if (m < now) m = now;
+  while (skipped.has(m)) {
+    m = addMonths(m, 1);
+  }
   return `${m}-${String(Math.min(r.day, daysInMonth(m))).padStart(2, '0')}`;
 };
 
@@ -74,17 +78,24 @@ export const upcomingRepeats = (recurring) =>
   recurring.map((r) => ({ ...r, next: nextRun(r) })).sort((a, b) => (a.next < b.next ? -1 : 1));
 
 export function RepeatsPanel({ startAdding = false }) {
-  const { state, addRecurring, removeRecurring } = useStore();
+  const { state, expenses, addRecurring, removeRecurring, toggleSkipRecurring } = useStore();
   const toast = useToast();
   const [adding, setAdding] = useState(startAdding || state.recurring.length === 0);
   const [amount, setAmount] = useState('');
   const [cat, setCat] = useState('Rent');
   const [note, setNote] = useState('');
   const [day, setDay] = useState(String(new Date().getDate()));
+  const [mandatory, setMandatory] = useState(true);
 
   const list = upcomingRepeats(state.recurring);
   const monthly = state.recurring.reduce((s, r) => s + r.amount, 0);
+  const curMonth = currentMonth();
   const dayNow = new Date().getDate();
+
+  const handleCatChange = (newCat) => {
+    setCat(newCat);
+    setMandatory(['Rent', 'Bills', 'Phone', 'Health', 'Education'].includes(newCat));
+  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -92,7 +103,7 @@ export function RepeatsPanel({ startAdding = false }) {
     if (!(v > 0)) return toast(t('Enter an amount above zero.'), { tone: 'warn' });
     const d = Number(day);
     const name = note.trim() || catName(cat);
-    addRecurring({ amount: v, category: cat, note: note.trim(), day: d });
+    addRecurring({ amount: v, category: cat, note: note.trim(), day: d, mandatory });
     toast(
       d === dayNow
         ? t('Added {name} for today. It repeats on {day} of each month.', { name, day: ordinal(d) })
@@ -115,29 +126,53 @@ export function RepeatsPanel({ startAdding = false }) {
           {list.map((r) => {
             const m = catMeta(r.category);
             const name = r.note || catName(r.category);
+            const isMandatory = r.mandatory !== false;
+            const isSkippedThisMonth = (r.skippedMonths || []).includes(curMonth);
+            const isLoggedThisMonth = expenses.some((e) => e.recurringId === r.id && e.date.slice(0, 7) === curMonth);
             return (
-              <li key={r.id} className="rec">
+              <li key={r.id} className={`rec ${isSkippedThisMonth ? 'is-skipped' : ''}`}>
                 <span className="tx__icon tx__icon--sm" style={{ '--cat': m.color }} aria-hidden="true">
                   {m.emoji}
                 </span>
                 <span className="tx__body">
-                  <span className="tx__title">{name}</span>
+                  <span className="tx__title">
+                    <span>{name}</span>
+                    <span className={`badge badge--sm ${isMandatory ? 'badge--mandatory' : 'badge--flexible'}`}>
+                      {isMandatory ? t('Mandatory') : t('Flexible')}
+                    </span>
+                    {isSkippedThisMonth && <span className="badge badge--sm badge--warn">{t('Skipped')}</span>}
+                    {isLoggedThisMonth && !isSkippedThisMonth && <span className="badge badge--sm badge--ok">✓ {t('Paid')}</span>}
+                  </span>
                   <span className="tx__meta">
                     {t('{amount} on {day}, next {date}', { amount: money(r.amount), day: ordinal(r.day), date: shortDate(r.next) })}
                   </span>
                 </span>
-                <button
-                  className="icon-btn icon-btn--sm"
-                  aria-label={t('Stop repeating {name}', { name })}
-                  onClick={() => {
-                    if (window.confirm(t('Stop adding {name} every month? Expenses already added stay.', { name }))) {
-                      removeRecurring(r.id);
-                      toast(t('Repeat stopped'));
-                    }
-                  }}
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="rec__tools">
+                  <button
+                    type="button"
+                    className={`btn-skip ${isSkippedThisMonth ? 'is-skipped' : ''}`}
+                    onClick={() => {
+                      toggleSkipRecurring(r.id);
+                      toast(t(isSkippedThisMonth ? 'Resumed {name} for this month' : 'Skipped {name} for this month', { name }));
+                    }}
+                    title={isSkippedThisMonth ? t('Resume this month') : t('Skip this month')}
+                  >
+                    {isSkippedThisMonth ? t('Unskip') : t('Skip')}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn--sm"
+                    aria-label={t('Stop repeating {name}', { name })}
+                    onClick={() => {
+                      if (window.confirm(t('Stop adding {name} every month? Expenses already added stay.', { name }))) {
+                        removeRecurring(r.id);
+                        toast(t('Repeat stopped'));
+                      }
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </li>
             );
           })}
@@ -162,7 +197,7 @@ export function RepeatsPanel({ startAdding = false }) {
           <div className="sheet__row sheet__row--even">
             <label className="field">
               <span className="field-label">{t('Category')}</span>
-              <select value={cat} onChange={(e) => setCat(e.target.value)}>
+              <select value={cat} onChange={(e) => handleCatChange(e.target.value)}>
                 {CATEGORIES.map((c) => (
                   <option key={c.name} value={c.name}>
                     {c.emoji} {catName(c.name)}
@@ -180,6 +215,28 @@ export function RepeatsPanel({ startAdding = false }) {
                 ))}
               </select>
             </label>
+          </div>
+          <div className="field">
+            <span className="field-label">{t('Commitment')}</span>
+            <div className="segmented segmented--2" role="radiogroup">
+              <button
+                type="button"
+                className={mandatory ? 'is-on' : ''}
+                onClick={() => setMandatory(true)}
+              >
+                {t('Mandatory')}
+              </button>
+              <button
+                type="button"
+                className={!mandatory ? 'is-on' : ''}
+                onClick={() => setMandatory(false)}
+              >
+                {t('Flexible')}
+              </button>
+            </div>
+            <span className="muted small">
+              {mandatory ? t('Essential commitment (rent, bills, debt, school).') : t('Optional service (streaming, gaming, gym).')}
+            </span>
           </div>
           <p className="muted small">
             {Number(day) === dayNow

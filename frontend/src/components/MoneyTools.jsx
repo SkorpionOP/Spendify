@@ -7,6 +7,7 @@ import { currencySymbol, formatAmountInput, money, parseAmountInput } from '../l
 import { CATEGORIES, category as catMeta } from '../lib/categories';
 import { catName, getConfig, ordinal, t } from '../lib/i18n';
 import { useToast } from './Toasts';
+import { CategoryIcon } from './CategoryIcon';
 
 const amountInputMode = () => (getConfig().currency === 'IDR' ? 'numeric' : 'decimal');
 
@@ -132,7 +133,7 @@ export function RepeatsPanel({ startAdding = false }) {
             return (
               <li key={r.id} className={`rec ${isSkippedThisMonth ? 'is-skipped' : ''}`}>
                 <span className="tx__icon tx__icon--sm" style={{ '--cat': m.color }} aria-hidden="true">
-                  {m.emoji}
+                  <CategoryIcon name={r.category} size={18} color={m.color} />
                 </span>
                 <span className="tx__body">
                   <span className="tx__title">

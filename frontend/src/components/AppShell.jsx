@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { CalendarDays, Eye, EyeOff, Home, ListOrdered, PieChart, Plus, Settings } from 'lucide-react';
+import { CalendarDays, Eye, EyeOff, Home, PieChart, Plus, ReceiptText, Settings } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { useStore } from '../lib/store';
 import { useExpenseSheet } from './ExpenseSheet';
@@ -9,7 +9,7 @@ const NAV = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/insights', label: 'Insights', icon: PieChart },
-  { to: '/history', label: 'History', icon: ListOrdered },
+  { to: '/history', label: 'History', icon: ReceiptText },
 ];
 
 export function AppShell({ children }) {
@@ -23,10 +23,16 @@ export function AppShell({ children }) {
       <aside className="rail" aria-label="Main">
         <div className="brand">
           <span className="brand__mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="28" height="28">
-              <rect x="6" y="5" width="20" height="24" rx="6" fill="currentColor" opacity=".18" />
-              <rect x="6" y="15" width="20" height="14" rx="6" fill="currentColor" />
-              <rect x="10" y="2" width="12" height="5" rx="2.5" fill="currentColor" />
+            <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+              <rect x="3" y="3" width="26" height="26" rx="9" fill="url(#brandGrad)" />
+              <path d="M10 16.5C10 13.5 12.5 11 16 11C19.5 11 22 13.5 22 16.5C22 19.5 19.5 22 16 22" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="16" cy="16.5" r="2" fill="white" />
+              <defs>
+                <linearGradient id="brandGrad" x1="3" y1="3" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#ff4b72" />
+                  <stop offset="1" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
             </svg>
           </span>
           Spendify

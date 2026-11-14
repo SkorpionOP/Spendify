@@ -8,6 +8,7 @@ import { category } from '../lib/categories';
 import { MonthSwitcher } from '../components/MonthSwitcher';
 import { ExpenseRow } from '../components/ExpenseList';
 import { useExpenseSheet } from '../components/ExpenseSheet';
+import { CategoryIcon } from '../components/CategoryIcon';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -164,7 +165,7 @@ export default function CalendarPage() {
               {selectedRepeats.map((r) => (
                 <li key={r.id} className="cal__repeat-item">
                   <span className="cal__repeat-emoji" aria-hidden="true">
-                    {category(r.category).emoji}
+                    <CategoryIcon name={r.category} size={20} color={category(r.category).color} />
                   </span>
                   <div className="cal__repeat-info">
                     <span className="cal__repeat-name">{r.note || catName(r.category)}</span>

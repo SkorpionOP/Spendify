@@ -10,8 +10,34 @@ import { useBackClose } from '../lib/backclose';
 import { useStore } from '../lib/store';
 import { useToast } from './Toasts';
 import { ErrorBoundary } from './ErrorBoundary';
+import { CategoryIcon } from './CategoryIcon';
 
 const SheetContext = createContext(null);
+
+const KEYWORD_MAP = [
+  [['kopi', 'coffee', 'starbucks', 'kenangan', 'janji jiwa', 'fore', 'latte', 'espresso', 'cappuccino', 'cafe'], 'Coffee'],
+  [['gojek', 'grab', 'mrt', 'lrt', 'bensin', 'pertamina', 'shell', 'toll', 'tol', 'parkir', 'parking', 'kereta', 'commuter', 'ojol', 'taxi', 'taksi', 'busway', 'transjakarta', 'angkot'], 'Transport'],
+  [['indomaret', 'alfamart', 'supermarket', 'hypermart', 'superindo', 'sayur', 'buah', 'beras', 'telur', 'minyak', 'grocery', 'groceries', 'pasar'], 'Groceries'],
+  [['restoran', 'restaurant', 'mcd', 'mcdonald', 'kfc', 'burger', 'pizza', 'sushi', 'hokben', 'bakso', 'mie gacoan', 'gacoan', 'nasi padang', 'sate', 'warteg', 'dining', 'lunch', 'dinner'], 'Dining Out'],
+  [['netflix', 'spotify', 'youtube', 'disney', 'prime', 'icloud', 'google one', 'patreon', 'chatgpt', 'subscription'], 'Subscriptions'],
+  [['pln', 'listrik', 'pdam', 'air', 'wifi', 'indihome', 'biznet', 'myrepublic', 'first media', 'gas', 'iuran', 'tagihan', 'token'], 'Bills'],
+  [['pulsa', 'kuota', 'telkomsel', 'xl', 'indosat', 'tri', 'smartfren'], 'Phone'],
+  [['obat', 'apotek', 'kimia farma', 'k24', 'dokter', 'klinik', 'hospital', 'rumah sakit', 'dentist', 'gigi', 'vitamin'], 'Health'],
+  [['gym', 'fitness', 'badminton', 'futsal', 'padel', 'renang', 'workout'], 'Fitness'],
+  [['steam', 'playstation', 'ps5', 'nintendo', 'game', 'topup ml', 'mobile legends', 'valorant', 'genshin', 'roblox'], 'Games'],
+  [['bioskop', 'cinema', 'xxi', 'cgv', 'cinepolis', 'tiket', 'nonton', 'movie'], 'Entertainment'],
+  [['shopee', 'tokopedia', 'lazada', 'baju', 'celana', 'sepatu', 'zara', 'uniqlo', 'h&m'], 'Shopping'],
+  [['skincare', 'makeup', 'salon', 'barbershop', 'potong rambut', 'creambath', 'facial'], 'Beauty'],
+  [['kos', 'kost', 'kontrakan', 'sewa', 'maintenance', 'ipl', 'apartemen'], 'Rent'],
+];
+
+function detectCategoryFromNote(text) {
+  const clean = (text || '').toLowerCase();
+  for (const [words, cat] of KEYWORD_MAP) {
+    if (words.some((w) => clean.includes(w))) return cat;
+  }
+  return null;
+}
 
 export function ExpenseSheetProvider({ children }) {
   // undefined = closed, {} = new, {id,…} = edit. A home-screen shortcut (/?add=1) opens it straight away.
@@ -392,7 +418,7 @@ function ExpenseSheet({ expense, onClose }) {
               {quick.slice(0, 2).map((e) => (
                 <button type="button" key={e.id} className="quick__item quick__item--two" onClick={() => fillFrom(e)}>
                   <span className="quick__emoji" aria-hidden="true">
-                    {catMeta(e.category).emoji}
+                    <CategoryIcon name={e.category} size={20} color={catMeta(e.category).color} />
                   </span>
                   <span className="quick__col">
                     <span className="quick__text">{e.note || catName(e.category)}</span>
@@ -411,7 +437,7 @@ function ExpenseSheet({ expense, onClose }) {
                 <label key={c.name} className="cat" style={{ '--cat': c.color }}>
                   <input type="radio" name="category" value={c.name} checked={category === c.name} onChange={() => pickCategory(c.name)} />
                   <span className="cat__dot" aria-hidden="true">
-                    {c.emoji}
+                    <CategoryIcon name={c.name} size={24} color={category === c.name ? '#ffffff' : c.color} />
                   </span>
                   <span className="cat__name">{catName(c.name)}</span>
                 </label>
@@ -430,13 +456,26 @@ function ExpenseSheet({ expense, onClose }) {
             <label className="entry__note">
               <PencilLine size={18} aria-hidden="true" />
               <span className="sr-only">{t('Note')}</span>
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('What was it for?')} maxLength={80} enterKeyHint="done" />
+              <input
+                value={note}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNote(val);
+                  const matched = detectCategoryFromNote(val);
+                  if (matched && matched !== category) {
+                    pickCategory(matched);
+                  }
+                }}
+                placeholder={t('What was it for?')}
+                maxLength={80}
+                enterKeyHint="done"
+              />
             </label>
             {noteMatches.length > 0 && (
               <div className="entry__suggest" role="group" aria-label={t('From your history')}>
                 {noteMatches.map((e) => (
                   <button type="button" key={e.id} className="quick__item" onClick={() => fillFrom(e, { keepAmount: true })}>
-                    <span aria-hidden="true">{catMeta(e.category).emoji}</span>
+                    <CategoryIcon name={e.category} size={16} color={catMeta(e.category).color} />
                     <span className="quick__text">{e.note}</span>
                     <span className="quick__amt">{money(e.amount)}</span>
                   </button>

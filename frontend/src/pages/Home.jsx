@@ -14,6 +14,7 @@ import { useExpenseSheet } from '../components/ExpenseSheet';
 import { BackupCard, InstallCard } from '../components/Nudges';
 import { Sheet } from '../components/Sheet';
 import { RepeatsPanel, TopupPanel, upcomingRepeats } from '../components/MoneyTools';
+import { CategoryIcon } from '../components/CategoryIcon';
 
 const STATUS = {
   ok: { label: 'On track', icon: Check },
@@ -231,9 +232,10 @@ export default function Home() {
           <p className="tile__label">{t('Most spent on')}</p>
           <p className="tile__value tile__value--text">
             {top ? (
-              <>
-                <span aria-hidden="true">{category(top.name).emoji}</span> {catName(top.name)}
-              </>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <CategoryIcon name={top.name} size={20} color={category(top.name).color} />
+                <span>{catName(top.name)}</span>
+              </span>
             ) : (
               '—'
             )}

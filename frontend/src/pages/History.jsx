@@ -5,6 +5,7 @@ import { CATEGORIES } from '../lib/categories';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
 import { GroupedExpenses } from '../components/ExpenseList';
+import { CategoryIcon } from '../components/CategoryIcon';
 
 const PAGE = 60;
 
@@ -81,7 +82,7 @@ export default function History() {
               onClick={() => (setCat(cat === c.name ? '' : c.name), setLimit(PAGE))}
               aria-pressed={cat === c.name}
             >
-              <span aria-hidden="true">{c.emoji}</span> {catName(c.name)}
+              <CategoryIcon name={c.name} size={15} color={cat === c.name ? '#ffffff' : c.color} /> {catName(c.name)}
             </button>
           ))}
         </div>

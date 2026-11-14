@@ -838,7 +838,6 @@ a {
   width: 42px;
   height: 42px;
   border-radius: 13px;
-  font-size: 1.25rem;
   background: color-mix(in srgb, var(--cat) 16%, var(--surface));
 }
 
@@ -846,7 +845,24 @@ a {
   width: 34px;
   height: 34px;
   border-radius: 11px;
-  font-size: 1.0625rem;
+}
+
+.cat-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex: none;
+}
+
+.tx__repeat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--jam) 18%, var(--surface-2));
+  color: var(--jam);
+  margin-left: 6px;
+  line-height: 1;
 }
 
 .tx__body {
@@ -3311,9 +3327,12 @@ label.btn {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  font-size: 1.5rem;
-  background: color-mix(in srgb, var(--cat) 13%, var(--surface));
-  transition: box-shadow 0.12s ease;
+  background: color-mix(in srgb, var(--cat) 15%, var(--surface-2));
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.cat:active .cat__dot {
+  transform: scale(0.92);
 }
 
 .cat__name {
@@ -3330,8 +3349,12 @@ label.btn {
 }
 
 .cat input:checked + .cat__dot {
-  box-shadow: 0 0 0 2.5px var(--surface), 0 0 0 5px var(--ink);
-  background: color-mix(in srgb, var(--cat) 26%, var(--surface));
+  box-shadow: 0 0 0 2.5px var(--surface), 0 0 0 5px var(--cat, var(--ink));
+  background: var(--cat, var(--ink));
+}
+
+.cat input:checked + .cat__dot .cat-icon {
+  color: #ffffff !important;
 }
 
 .cat input:checked ~ .cat__name {

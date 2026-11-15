@@ -14,6 +14,7 @@ import { BackupCard, InstallCard, PaydayCard } from '../components/Nudges';
 import { Sheet } from '../components/Sheet';
 import { RepeatsPanel, TopupPanel } from '../components/MoneyTools';
 import { CheckinCard, CheckinsPanel } from '../components/Checkins';
+import { CheerCard } from '../components/CheerCard';
 import { GoalEditor, SavingsCard } from '../components/Goals';
 import { LimitsPanel, LimitsSection } from '../components/Limits';
 
@@ -138,6 +139,9 @@ export default function Home() {
       {checkins.map((c) => (
         <CheckinCard key={c.id} checkin={c} />
       ))}
+
+      {/* One small celebration at a time, and not on top of a recap */}
+      {!recap && !week && <CheerCard />}
 
       {streak >= 3 && (
         <p className="streak">

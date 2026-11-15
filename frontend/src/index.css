@@ -1953,6 +1953,47 @@ label.btn {
   margin-top: 24px;
 }
 
+/* Celebrations on Home: goal milestones, payday, spending less */
+.nudge--cheer {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--jam) 14%, var(--surface)), color-mix(in srgb, #8b5cf6 12%, var(--surface)));
+  border: 1px solid color-mix(in srgb, var(--jam) 22%, transparent);
+  animation: bubble-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cheer__emoji {
+  flex: none;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.nudge--cheer.is-party .cheer__emoji {
+  animation: cheer-pop 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 2;
+}
+
+@keyframes cheer-pop {
+  30% {
+    transform: scale(1.35) rotate(-12deg);
+  }
+  60% {
+    transform: scale(0.95) rotate(8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nudge--cheer,
+  .nudge--cheer .cheer__emoji {
+    animation: none;
+  }
+}
+
+.is-private .nudge--cheer .nudge__body {
+  filter: blur(9px);
+  user-select: none;
+}
+
 .beta-tag {
   display: inline-flex;
   align-items: center;

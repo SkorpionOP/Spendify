@@ -2271,9 +2271,13 @@ label.btn {
 
 .entry__head {
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
   align-items: center;
   margin: 0 -8px;
+}
+
+.entry__head > :last-child {
+  justify-self: end;
 }
 
 .entry__head h2 {
@@ -3977,7 +3981,7 @@ label.btn {
 /* Shortcuts: round icons with a label underneath, like an e-wallet app */
 .shortcuts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -5610,4 +5614,510 @@ label.btn {
 
 .lightbox__bar .icon-btn {
   color: #fff;
+}
+
+/* ---------- IOUs: money lent and borrowed ---------- */
+a.shortcut {
+  text-decoration: none;
+}
+
+.iou__head {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+.iou__head h1 {
+  flex: 1;
+  min-width: 0;
+}
+
+.iou__new {
+  flex: none;
+  gap: 4px;
+}
+
+@media (min-width: 960px) {
+  .iou__back {
+    display: none;
+  }
+}
+
+.iou__summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.iou__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 20px;
+}
+
+.iou__tile--in {
+  background: var(--leaf-soft);
+}
+
+.iou__tile--out {
+  background: var(--amber-soft);
+}
+
+.iou__tile-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.iou__tile-num {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.iou__tile--in .iou__tile-num {
+  color: var(--leaf);
+}
+
+.iou__tile--out .iou__tile-num {
+  color: var(--amber);
+}
+
+.iou__tile-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+.iou__alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.iou__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.debt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.debt:active {
+  background: var(--surface-2);
+}
+
+.debt__avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 1.0625rem;
+  background: var(--leaf-soft);
+  color: var(--leaf);
+}
+
+.debt.is-borrowed .debt__avatar {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.debt.is-done .debt__avatar {
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
+.debt__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.debt__name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debt__meta {
+  font-size: 0.875rem;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debt__due {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.debt__due.is-warn {
+  color: var(--amber);
+}
+
+.debt__due.is-bad {
+  color: var(--danger);
+}
+
+.debt__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.debt__progress-text {
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+.debt__amount {
+  flex: none;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--leaf);
+}
+
+.debt.is-borrowed .debt__amount {
+  color: var(--amber);
+}
+
+.debt.is-done .debt__amount {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+.iou__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--leaf-soft);
+  color: var(--leaf);
+  font-weight: 600;
+}
+
+.iou__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.iou__foot {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.iou__empty-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  background: var(--leaf-soft);
+  color: var(--leaf);
+}
+
+.iou__empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 8px;
+}
+
+.iou__empty-actions .btn {
+  gap: 8px;
+}
+
+/* form */
+.iou-form__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.iou-form .chip--date {
+  position: relative;
+}
+
+/* details */
+.iou-detail__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.iou-detail__label {
+  margin: 0;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.iou-detail__num {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--leaf);
+  overflow-wrap: anywhere;
+}
+
+.iou-detail.is-borrowed .iou-detail__num {
+  color: var(--amber);
+}
+
+.iou-detail__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 280px;
+  margin-top: 6px;
+}
+
+.iou-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+
+.iou-pay .btn {
+  gap: 6px;
+}
+
+.iou-pay p {
+  margin: 0;
+}
+
+.iou-detail__payments h3 {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+.iou-detail__payments ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.iou-detail__payments li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.iou-detail__payments li span:first-child {
+  flex: 1;
+  color: var(--ink-2);
+}
+
+.iou-detail__payments li span:nth-child(2) {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.iou-detail__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.iou-detail__actions .btn {
+  flex: 1;
+  gap: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.iou-detail__delete {
+  color: var(--danger);
+}
+
+/* Home card */
+.iou-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.iou-card__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.iou-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.iou-card__nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+}
+
+.iou-card__label {
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+.iou-card__nums strong.is-in {
+  color: var(--leaf);
+}
+
+.iou-card__nums strong.is-out {
+  color: var(--amber);
+}
+
+.iou-card__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--amber);
+}
+
+.iou-card__note.is-bad {
+  color: var(--danger);
+}
+
+.iou-card__go {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* Scan button in the add-expense header */
+.entry__scan-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin-right: 8px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--jam-soft);
+  color: var(--jam);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entry__receipt[hidden] {
+  display: none;
+}
+
+/* ---------- Google Drive backups (Settings → Your data) ---------- */
+.drive {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.drive__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.drive p {
+  margin: 0;
+}
+
+.drive .btn {
+  gap: 8px;
+}
+
+.drive .link-btn {
+  align-self: flex-start;
 }

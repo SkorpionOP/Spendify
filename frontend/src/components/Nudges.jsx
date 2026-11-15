@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Download, Share, Smartphone, X } from 'lucide-react';
+import { CloudUpload, Download, Share, Smartphone, X } from 'lucide-react';
 import { useInstall } from '../lib/install';
 import { useStore } from '../lib/store';
 import { canShareFiles, downloadBackup, shareBackup } from '../lib/backup';
+import { useDriveBackup } from './DriveBackup';
 import { useToast } from './Toasts';
 import { ordinal, t, tn } from '../lib/i18n';
 import { periodPreview } from '../lib/dates';
@@ -130,6 +131,7 @@ export function BackupCard() {
   const toast = useToast();
   const [hidden, setHidden] = useState(() => dismissedUntil('backup') > Date.now());
   const [now] = useState(() => Date.now());
+  const { drive, busy, backup } = useDriveBackup();
 
   const count = state.expenses.length;
   const last = state.lastBackupAt;
@@ -162,9 +164,16 @@ export function BackupCard() {
         {tn(count, '{n} expenses live only on this phone.', '{n} expenses live only on this phone.')}{' '}
         {share ? t('Save a copy to Google Drive, WhatsApp or Files.') : t('Download a copy to keep somewhere safe.')}
       </p>
-      <button className="btn btn--ghost btn--sm" onClick={run}>
-        {share ? <Share size={16} /> : <Download size={16} />} {share ? t('Save a backup') : t('Download backup')}
-      </button>
+      {drive ? (
+        // Connected to Google Drive: one tap sends it there
+        <button className="btn btn--ghost btn--sm" onClick={backup} disabled={busy}>
+          <CloudUpload size={16} /> {busy ? t('Backing up…') : t('Back up to Google Drive')}
+        </button>
+      ) : (
+        <button className="btn btn--ghost btn--sm" onClick={run}>
+          {share ? <Share size={16} /> : <Download size={16} />} {share ? t('Save a backup') : t('Download backup')}
+        </button>
+      )}
     </section>
   );
 }

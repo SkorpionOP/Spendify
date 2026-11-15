@@ -1,5 +1,6 @@
 import { addMonths, currentMonth, dateInCycle, monthKey, toISODate, today } from './dates';
 import { clampPayday, defaultLang } from './i18n';
+import { normalizeDebts } from './iou';
 
 /*
  * Pure state + money maths. No React here, so it can be unit tested.
@@ -15,6 +16,7 @@ export const empty = () => ({
   checkins: [], // daily questions: [{ id, name, category, amount, days: [0..6, Monday = 0], askedOn }]
   goals: [], // [{ id, name, target, createdAt }] filled from savings, in list order
   limits: {}, // { Category: monthly cap }
+  debts: [], // IOUs: money lent or borrowed, see lib/iou.js. Separate from the budget.
   scenarios: [], // saved "what if" sentences: [{ id, name, text, createdAt }] (never touch real data)
   settings: {
     theme: 'system',
@@ -72,6 +74,7 @@ export const normalize = (raw) => {
           askedOn: typeof c.askedOn === 'string' ? c.askedOn : null,
         }))
     : [];
+  s.debts = normalizeDebts(s.debts);
   s.scenarios = Array.isArray(s.scenarios) ? s.scenarios.filter((x) => x && x.id && typeof x.text === 'string') : [];
   s.settings = { ...base.settings, ...(s.settings || {}) };
   s.settings.aiHelp = s.settings.aiHelp !== false;

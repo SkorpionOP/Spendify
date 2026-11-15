@@ -369,6 +369,56 @@ export function StoreProvider({ children }) {
     [setState]
   );
 
+  /* IOUs: money lent or borrowed. A separate ledger; the budget and savings are never touched. */
+  const addDebt = useCallback(
+    ({ direction, person, amount, note, date, due }) => {
+      const debt = {
+        id: uid(),
+        direction: direction === 'borrowed' ? 'borrowed' : 'lent',
+        person: person.trim(),
+        amount: Number(amount),
+        note: (note || '').trim(),
+        date: date || today(),
+        due: due || null,
+        payments: [],
+        createdAt: Date.now(),
+      };
+      setState((s) => ({ ...s, debts: [debt, ...s.debts] }));
+      return debt;
+    },
+    [setState]
+  );
+  const updateDebt = useCallback(
+    (id, patch) => setState((s) => ({ ...s, debts: s.debts.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
+    [setState]
+  );
+  const deleteDebt = useCallback(
+    (id) => {
+      const removed = latest.current.debts.find((d) => d.id === id) || null;
+      setState((s) => ({ ...s, debts: s.debts.filter((d) => d.id !== id) }));
+      return removed;
+    },
+    [setState]
+  );
+  const restoreDebt = useCallback(
+    (debt) => setState((s) => (s.debts.some((d) => d.id === debt.id) ? s : { ...s, debts: [debt, ...s.debts] })),
+    [setState]
+  );
+  /** Money coming back (lent) or paid back (borrowed). Returns the payment, for Undo. */
+  const addDebtPayment = useCallback(
+    (id, amount, date) => {
+      const payment = { id: uid(), amount: Number(amount), date: date || today() };
+      setState((s) => ({ ...s, debts: s.debts.map((d) => (d.id === id ? { ...d, payments: [...d.payments, payment] } : d)) }));
+      return payment;
+    },
+    [setState]
+  );
+  const removeDebtPayment = useCallback(
+    (id, paymentId) =>
+      setState((s) => ({ ...s, debts: s.debts.map((d) => (d.id === id ? { ...d, payments: d.payments.filter((p) => p.id !== paymentId) } : d)) })),
+    [setState]
+  );
+
   /* saved "what if" scenarios */
   const saveScenario = useCallback(
     ({ name, text, items = [] }) =>
@@ -474,6 +524,12 @@ export function StoreProvider({ children }) {
     removeGoal,
     moveGoal,
     setLimit,
+    addDebt,
+    updateDebt,
+    deleteDebt,
+    restoreDebt,
+    addDebtPayment,
+    removeDebtPayment,
     addCheckin,
     removeCheckin,
     answerCheckin,

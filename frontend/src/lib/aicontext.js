@@ -2,6 +2,7 @@ import { addDaysISO, addMonths, cycleEnd, cycleStart, dayOfCycle, monthKey, toIS
 import { goalProgress, limitStatus, monthSummary } from './money';
 import { monthInsights } from './insights';
 import { baseline } from './twin';
+import { debtSummary } from './iou';
 
 /*
  * The summary the AI assistant may see. Totals only: no individual expenses, no notes, no name.
@@ -9,6 +10,11 @@ import { baseline } from './twin';
  * doesn't have to (and can't get them backwards). Amounts are whole units of `currency`.
  */
 const round = (n) => Math.round(Number(n) || 0);
+
+const iouTotals = (state, day) => {
+  const s = debtSummary(state.debts || [], day);
+  return { moneyOthersOweHer: round(s.owedToMe), moneySheOwesOthers: round(s.iOwe), openIous: s.open, pastDueDate: s.overdue };
+};
 
 /** Today, yesterday, this/last week (Monday to Sunday) and this/last budget month, as ISO dates. */
 export const dateRanges = (now = new Date()) => {
@@ -96,6 +102,8 @@ export const buildContext = (state, now = new Date()) => {
       targetMonth: g.by || null,
     })),
     categoryLimits: limitStatus(state, key).map((l) => ({ category: l.category, limit: round(l.limit), spentThisMonth: round(l.spent), status: l.level })),
+    // IOUs as totals only, never names. Not part of the budget or savings figures above.
+    iou: iouTotals(state, toISODate(now)),
     monthlyRepeats: (state.recurring || []).map((r) => ({ category: r.category, amount: round(r.amount), mandatory: r.mandatory !== false })),
   };
 };

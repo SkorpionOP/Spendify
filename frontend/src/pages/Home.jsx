@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CalendarClock, Check, CircleHelp, Eye, EyeOff, Gauge, Settings, Sparkles, Target, Wallet, X } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Check, CircleHelp, Eye, EyeOff, Gauge, HandCoins, Settings, Sparkles, Target, Wallet, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { dueCheckins, limitStatus } from '../lib/money';
 import { monthRecap, weekRecap } from '../lib/recap';
@@ -8,6 +8,8 @@ import { useBackClose } from '../lib/backclose';
 import { monthPicture } from '../lib/budget';
 import { addDaysISO, addMonths, currentMonth, cycleEnd, cycleStart, greeting, isPayCycle, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
 import { AiRecap } from '../components/AiRecap';
+import { IouCard } from '../components/IouCard';
+import { debtSummary } from '../lib/iou';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
 import { GroupedExpenses } from '../components/ExpenseList';
@@ -105,6 +107,7 @@ export default function Home() {
     writeSeen('spendify:wrecap', week.key);
     setSeen((x) => ({ ...x, week: week.key }));
   };
+  const iouOverdue = debtSummary(state.debts, toISODate(now)).overdue;
   const checkins = dueCheckins(state);
   const limits = limitStatus(state, key);
   const limitWarn = limits.filter((l) => l.level !== 'ok').length;
@@ -282,7 +285,7 @@ export default function Home() {
           <span className="shortcut__icon shortcut__icon--goal" aria-hidden="true">
             <Target size={22} />
           </span>
-          <span className="shortcut__label">{t('Savings goal')}</span>
+          <span className="shortcut__label">{t('Goal')}</span>
         </button>
         <button className="shortcut" onClick={() => openPanel('limits')}>
           <span className={`shortcut__icon ${limitWarn ? 'shortcut__icon--warn' : ''}`} aria-hidden="true">
@@ -291,9 +294,18 @@ export default function Home() {
           </span>
           <span className="shortcut__label">{t('Limits')}</span>
         </button>
+        <Link className="shortcut" to="/iou">
+          <span className={`shortcut__icon ${iouOverdue ? 'shortcut__icon--warn' : ''}`} aria-hidden="true">
+            <HandCoins size={22} />
+            {iouOverdue > 0 && <span className="shortcut__badge shortcut__badge--warn">{iouOverdue}</span>}
+          </span>
+          <span className="shortcut__label">{t('IOUs')}</span>
+        </Link>
       </nav>
 
       <SavingsCard savings={p.leftSavings} carriedIn={p.carriedIn} onEdit={editGoal} />
+
+      <IouCard />
 
       <LimitsSection onManage={() => openPanel('limits')} onlyWarnings />
 

@@ -495,8 +495,13 @@ function ExpenseSheet({ expense, onClose }) {
             >
               <Trash2 size={20} />
             </button>
-          ) : (
+          ) : hasPhoto ? (
             <span className="entry__spacer" />
+          ) : (
+            <button type="button" className="entry__scan-top" onClick={() => fileRef.current?.click()} title={aiOn ? t('receipt-privacy') : undefined} aria-label={aiOn ? t('Scan receipt or screenshot') : t('Add receipt photo')}>
+              {aiOn ? <ScanLine size={17} aria-hidden="true" /> : <ImagePlus size={17} aria-hidden="true" />}
+              <span>{aiOn ? t('Scan') : t('Photo')}</span>
+            </button>
           )}
         </header>
 
@@ -540,7 +545,7 @@ function ExpenseSheet({ expense, onClose }) {
           </div>
 
           {/* Receipt or payment screenshot: scan it into the form, and keep the photo with the expense */}
-          <div className={`entry__receipt ${scanMsg ? `is-${scanMsg.tone}` : ''}`}>
+          <div className={`entry__receipt ${scanMsg ? `is-${scanMsg.tone}` : ''}`} hidden={!hasPhoto && !isEdit}>
             <input
               ref={fileRef}
               type="file"

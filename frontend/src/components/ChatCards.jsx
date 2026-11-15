@@ -46,7 +46,7 @@ export function ExpenseCard({ ask, onClose }) {
   const toast = useToast();
   const [value, setValue] = useState(() => amountToInput(ask.amount || ''));
   const [cat, setCat] = useState(() => ask.category || detectCategoryFromNote(ask.name) || 'Others');
-  const [note, setNote] = useState(ask.name || '');
+  const [note, setNote] = useState(() => (ask.name ? ask.name.charAt(0).toUpperCase() + ask.name.slice(1) : ''));
   const [added, setAdded] = useState(null);
   const date = daysAgoISO(ask.daysAgo);
   const amount = parseAmountInput(value);

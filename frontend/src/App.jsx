@@ -15,6 +15,7 @@ import CalendarPage from './pages/CalendarPage';
 import Insights from './pages/Insights';
 import History from './pages/History';
 import Settings from './pages/Settings';
+import Iou from './pages/Iou';
 
 function useTheme(theme) {
   useEffect(() => {
@@ -74,6 +75,7 @@ function Routed() {
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/twin" element={<Twin />} />
+          <Route path="/iou" element={<Iou />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppShell>

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '../../../api/understand.js';
 import { cleanChanges } from '../changes';
+import { resetRateLimits } from '../../../api/_ratelimit.js';
 
 // A fake request/response pair for the Vercel handler
 const call = (body, method = 'POST') =>
@@ -25,7 +26,10 @@ const call = (body, method = 'POST') =>
 const aiSays = (obj) => vi.fn(async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify(obj) } }] }) }));
 
 describe('/api/understand', () => {
-  beforeEach(() => vi.stubEnv('GROQ_API_KEY', 'test-key'));
+  beforeEach(() => {
+    vi.stubEnv('GROQ_API_KEY', 'test-key');
+    resetRateLimits();
+  });
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
@@ -77,8 +81,8 @@ describe('/api/understand', () => {
     expect((await call({}, 'GET')).code).toBe(405);
     const fetch = aiSays({ changes: [], unclear: [] });
     vi.stubGlobal('fetch', fetch);
-    await call({ text: 'a'.repeat(1000) });
-    expect(JSON.parse(fetch.mock.calls[0][1].body).messages.at(-1).content).toHaveLength(400);
+    await call({ text: 'a'.repeat(3000) });
+    expect(JSON.parse(fetch.mock.calls[0][1].body).messages.at(-1).content).toHaveLength(1000);
   });
 });
 

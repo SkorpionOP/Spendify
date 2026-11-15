@@ -281,7 +281,7 @@ function BackupSection() {
   }, [showSnaps, state.savedAt]);
 
   const save = async (viaShare) => {
-    const json = exportData();
+    const json = await exportData();
     const ok = viaShare ? await shareBackup(json) : (downloadBackup(json), true);
     if (ok) {
       markBackedUp();

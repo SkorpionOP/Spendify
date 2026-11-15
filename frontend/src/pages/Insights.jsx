@@ -10,7 +10,7 @@ import { catName, getConfig, t, tn } from '../lib/i18n';
 import { payName } from '../lib/payments';
 import { MonthSwitcher } from '../components/MonthSwitcher';
 import { CategoryIcon } from '../components/CategoryIcon';
-import { useExpenseSheet } from '../components/ExpenseSheet';
+import { useExpenseView } from '../components/ExpenseSheet';
 import { BetaTag } from '../components/BetaTag';
 
 export default function Insights() {
@@ -214,7 +214,7 @@ function PaceChart({ d }) {
 /* ---------- 2. Three small numbers ---------- */
 
 function Stats({ d }) {
-  const open = useExpenseSheet();
+  const open = useExpenseView();
   return (
     <div className="stats">
       <div className="stat">
@@ -241,7 +241,7 @@ function Stats({ d }) {
 function WhereItWent({ d }) {
   const [open, setOpen] = useState(null);
   const [all, setAll] = useState(false);
-  const openSheet = useExpenseSheet();
+  const openSheet = useExpenseView();
   const top = d.categories[0]?.total || 1;
   const shown = all ? d.categories : d.categories.slice(0, 6);
   const prevShort = monthLabel(d.prevKey, { month: 'short' });

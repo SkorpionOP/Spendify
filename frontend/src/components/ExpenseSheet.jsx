@@ -1,64 +1,68 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together on purpose */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronUp, Delete, LayoutGrid, PencilLine, Repeat, Trash2, Wallet, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronUp, Delete, ImagePlus, LayoutGrid, Loader2, PencilLine, Repeat, RotateCw, ScanLine, Trash2, Wallet, X } from 'lucide-react';
 import { CATEGORIES, category as catMeta } from '../lib/categories';
 import { addMonths, monthKey, monthLabel, shortDate, toISODate, today } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, money, parseAmountInput } from '../lib/format';
 import { CURRENCIES, catName, getConfig, ordinal, t } from '../lib/i18n';
 import { previewAfter } from '../lib/budget';
-import { limitStatus } from '../lib/money';
+import { limitStatus, uid } from '../lib/money';
+import { saveReceipt } from '../lib/persist';
+import { blobToDataUrl, prepareImage } from '../lib/image';
+import { scanReceipt } from '../lib/ai';
+import { ExpenseDetail, useReceiptUrl } from './ExpenseDetail';
 import { PAYMENTS, payName } from '../lib/payments';
 import { useBackClose } from '../lib/backclose';
 import { useStore } from '../lib/store';
 import { useToast } from './Toasts';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CategoryIcon } from './CategoryIcon';
+import { detectCategoryFromNote } from '../lib/guesscat';
 
 const SheetContext = createContext(null);
-
-const KEYWORD_MAP = [
-  [['kopi', 'coffee', 'starbucks', 'kenangan', 'janji jiwa', 'fore', 'latte', 'espresso', 'cappuccino', 'cafe'], 'Coffee'],
-  [['gojek', 'grab', 'mrt', 'lrt', 'bensin', 'pertamina', 'shell', 'toll', 'tol', 'parkir', 'parking', 'kereta', 'commuter', 'ojol', 'taxi', 'taksi', 'busway', 'transjakarta', 'angkot'], 'Transport'],
-  [['indomaret', 'alfamart', 'supermarket', 'hypermart', 'superindo', 'sayur', 'buah', 'beras', 'telur', 'minyak', 'grocery', 'groceries', 'pasar'], 'Groceries'],
-  [['restoran', 'restaurant', 'mcd', 'mcdonald', 'kfc', 'burger', 'pizza', 'sushi', 'hokben', 'bakso', 'mie gacoan', 'gacoan', 'nasi padang', 'sate', 'warteg', 'dining', 'lunch', 'dinner'], 'Dining Out'],
-  [['netflix', 'spotify', 'youtube', 'disney', 'prime', 'icloud', 'google one', 'patreon', 'chatgpt', 'subscription'], 'Subscriptions'],
-  [['pln', 'listrik', 'pdam', 'air', 'wifi', 'indihome', 'biznet', 'myrepublic', 'first media', 'gas', 'iuran', 'tagihan', 'token'], 'Bills'],
-  [['pulsa', 'kuota', 'telkomsel', 'xl', 'indosat', 'tri', 'smartfren'], 'Phone'],
-  [['obat', 'apotek', 'kimia farma', 'k24', 'dokter', 'klinik', 'hospital', 'rumah sakit', 'dentist', 'gigi', 'vitamin'], 'Health'],
-  [['gym', 'fitness', 'badminton', 'futsal', 'padel', 'renang', 'workout'], 'Fitness'],
-  [['steam', 'playstation', 'ps5', 'nintendo', 'game', 'topup ml', 'mobile legends', 'valorant', 'genshin', 'roblox'], 'Games'],
-  [['bioskop', 'cinema', 'xxi', 'cgv', 'cinepolis', 'tiket', 'nonton', 'movie'], 'Entertainment'],
-  [['shopee', 'tokopedia', 'lazada', 'baju', 'celana', 'sepatu', 'zara', 'uniqlo', 'h&m'], 'Shopping'],
-  [['skincare', 'makeup', 'salon', 'barbershop', 'potong rambut', 'creambath', 'facial'], 'Beauty'],
-  [['kos', 'kost', 'kontrakan', 'sewa', 'maintenance', 'ipl', 'apartemen'], 'Rent'],
-];
-
-function detectCategoryFromNote(text) {
-  const clean = (text || '').toLowerCase();
-  for (const [words, cat] of KEYWORD_MAP) {
-    if (words.some((w) => clean.includes(w))) return cat;
-  }
-  return null;
-}
+const ViewContext = createContext(null);
 
 export function ExpenseSheetProvider({ children }) {
-  // undefined = closed, {} = new, {id,…} = edit. A home-screen shortcut (/?add=1) opens it straight away.
-  const [editing, setEditing] = useState(() => (new URLSearchParams(window.location.search).has('add') ? {} : undefined));
-  const onClosed = useCallback(() => setEditing(undefined), []);
-  const { markOpen, requestClose } = useBackClose(editing !== undefined, onClosed);
+  // undefined = closed
+  // { mode: 'edit', expense }        new ({}) or edit ({id,…}); `back` = return to that expense's details
+  // { mode: 'view', id }             the details of one expense, with Edit and Delete
+  // A home-screen shortcut (/?add=1) opens a new expense straight away.
+  const [sheet, setSheet] = useState(() => (new URLSearchParams(window.location.search).has('add') ? { mode: 'edit', expense: {} } : undefined));
+  const onClosed = useCallback(() => setSheet(undefined), []);
+  const { markOpen, requestClose } = useBackClose(sheet !== undefined, onClosed);
+  const remove = useDeleteExpense();
+  const editing = sheet?.mode === 'edit' ? sheet.expense : undefined;
 
   const open = useCallback(
     (expense = null) => {
       markOpen();
-      setEditing(expense || {});
+      setSheet({ mode: 'edit', expense: expense || {} });
     },
     [markOpen]
+  );
+  const view = useCallback(
+    (expense) => {
+      if (!expense?.id) return open(expense);
+      markOpen();
+      setSheet({ mode: 'view', id: expense.id });
+    },
+    [markOpen, open]
+  );
+  // Edit opened from the details goes back to the details (same history entry, so Back still closes)
+  const closeEdit = useCallback(() => (sheet?.back ? setSheet({ mode: 'view', id: sheet.back }) : requestClose()), [sheet, requestClose]);
+  const toEdit = useCallback((expense) => setSheet({ mode: 'edit', expense, back: expense.id }), []);
+  const deleteFromView = useCallback(
+    (id) => {
+      remove(id);
+      requestClose();
+    },
+    [remove, requestClose]
   );
 
   // Keyboard shortcut on desktop: "n" opens a new expense.
   useEffect(() => {
     const onKey = (e) => {
-      if (editing !== undefined || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (sheet !== undefined || e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
       if (e.key === 'n' || e.key === 'N') {
@@ -68,7 +72,7 @@ export function ExpenseSheetProvider({ children }) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [editing, open]);
+  }, [sheet, open]);
 
   // Tidy the URL after a shortcut launch
   useEffect(() => {
@@ -81,17 +85,27 @@ export function ExpenseSheetProvider({ children }) {
 
   return (
     <SheetContext.Provider value={open}>
-      {children}
-      {editing !== undefined && (
-        <ErrorBoundary onReset={requestClose}>
-          <ExpenseSheet key={editing.id || 'new'} expense={editing} onClose={requestClose} />
-        </ErrorBoundary>
-      )}
+      <ViewContext.Provider value={view}>
+        {children}
+        {editing !== undefined && (
+          <ErrorBoundary onReset={requestClose}>
+            <ExpenseSheet key={editing.id || 'new'} expense={editing} onClose={closeEdit} />
+          </ErrorBoundary>
+        )}
+        {sheet?.mode === 'view' && (
+          <ErrorBoundary onReset={requestClose}>
+            <ExpenseDetail id={sheet.id} onClose={requestClose} onEdit={toEdit} onDelete={deleteFromView} />
+          </ErrorBoundary>
+        )}
+      </ViewContext.Provider>
     </SheetContext.Provider>
   );
 }
 
+/** open(expense?): the add/edit form. */
 export const useExpenseSheet = () => useContext(SheetContext);
+/** view(expense): its details, with an Edit button. Falls back to the form for an unsaved expense. */
+export const useExpenseView = () => useContext(ViewContext);
 
 export function useDeleteExpense() {
   const { deleteExpense, restoreExpense } = useStore();
@@ -148,6 +162,17 @@ function ExpenseSheet({ expense, onClose }) {
   const [showAllCats, setShowAllCats] = useState(false);
   const [error, setError] = useState('');
   const amountRef = useRef(null);
+  const fileRef = useRef(null);
+  const aiOn = state.settings.aiHelp !== false;
+  // Receipt photo: a new one (blob + preview url) or the one already saved with this expense
+  const [photo, setPhoto] = useState(null);
+  const [dropOld, setDropOld] = useState(false);
+  const oldUrl = useReceiptUrl(!dropOld && !photo ? expense.receiptId : null);
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState(null); // { tone, text }
+  const [merchant, setMerchant] = useState(expense.merchant || '');
+  const [items, setItems] = useState(expense.items || []);
+  const hasPhoto = !!photo || (!!expense.receiptId && !dropOld);
 
   const linkedRule = isEdit && expense.recurringId ? state.recurring.find((r) => r.id === expense.recurringId) : null;
   const matchingRule = useMemo(() => {
@@ -258,8 +283,74 @@ function ExpenseSheet({ expense, onClose }) {
     setShowAllCats(false);
   };
 
-  const submit = (ev) => {
+  // Free the preview of a new photo when it is replaced or the sheet closes
+  useEffect(() => () => photo?.url && URL.revokeObjectURL(photo.url), [photo]);
+
+  /** A picked or pasted image: shrink it, attach it, and (with AI help on) read it into the form. */
+  const takePhoto = async (file) => {
+    setScanMsg(null);
+    let prepared;
+    try {
+      prepared = await prepareImage(file);
+    } catch {
+      toast(t('That file isn’t a photo Spendify can open.'), { tone: 'warn' });
+      return;
+    }
+    setPhoto({ blob: prepared.blob, url: URL.createObjectURL(prepared.blob) });
+    if (!aiOn) {
+      setScanMsg({ tone: 'info', text: t('scan-ai-off') });
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setScanMsg({ tone: 'info', text: t('scan-offline') });
+      return;
+    }
+    setScanning(true);
+    const r = await scanReceipt({ image: await blobToDataUrl(prepared.blob), today: today() });
+    setScanning(false);
+    if (r?.limited) return setScanMsg({ tone: 'warn', text: t('scan-limited') });
+    if (!r) return setScanMsg({ tone: 'warn', text: t('scan-failed') });
+    const rc = r.receipt;
+    if (!rc.isReceipt || (!rc.amount && !rc.merchant)) return setScanMsg({ tone: 'warn', text: t('scan-not-receipt') });
+    buzz(15);
+    if (rc.amount) setAmount(amountToInput(rc.amount));
+    const noteText = rc.note || rc.merchant;
+    if (noteText) setNote(noteText);
+    const cat = rc.category || detectCategoryFromNote(`${rc.merchant} ${rc.note}`);
+    if (cat) pickCategory(cat);
+    if (rc.date) setDate(rc.date > today() ? today() : rc.date);
+    if (rc.payment && trackPay) setPay(rc.payment);
+    setMerchant(rc.merchant || '');
+    setItems(rc.items || []);
+    setError('');
+    setScanMsg({ tone: 'ok', text: rc.amount ? t('scan-ok') : t('scan-no-amount') });
+  };
+  const takePhotoRef = useRef(takePhoto);
+  useEffect(() => {
+    takePhotoRef.current = takePhoto;
+  });
+
+  const removePhoto = () => {
+    setPhoto(null);
+    setDropOld(true);
+    setScanMsg(null);
+  };
+
+  // Paste a screenshot straight into the form (desktop: Ctrl+V)
+  useEffect(() => {
+    const onPaste = (e) => {
+      const file = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'));
+      if (!file) return;
+      e.preventDefault();
+      takePhotoRef.current(file);
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
+
+  const submit = async (ev) => {
     ev.preventDefault();
+    if (scanning) return;
     if (!hasValue) {
       setError(amount.trim() ? t('Use numbers only. You can add amounts with +, like 15000+8000.') : t('Enter an amount above zero.'));
       return;
@@ -268,14 +359,27 @@ function ExpenseSheet({ expense, onClose }) {
     const cleanNote = note.trim();
     buzz(15);
 
+    // Save a new photo first, so the details can show it straight away
+    let receiptId = dropOld ? undefined : expense.receiptId;
+    if (photo?.blob) {
+      const id = uid();
+      try {
+        await saveReceipt(id, photo.blob);
+        receiptId = id;
+      } catch {
+        toast(t('Couldn’t save the photo on this phone. The expense is saved without it.'), { tone: 'warn' });
+      }
+    }
+    const extra = { receiptId, merchant: merchant || undefined, items: items.length ? items : undefined };
+
     if (isEdit) {
-      updateExpense(expense.id, { amount: v, category, note, date, pay: trackPay ? pay || undefined : expense.pay });
+      updateExpense(expense.id, { amount: v, category, note, date, pay: trackPay ? pay || undefined : expense.pay, ...extra });
       toast(t('Changes saved'));
       onClose();
       return;
     }
 
-    const saved = addExpense({ amount: v, category, note, date, pay: trackPay ? pay : undefined });
+    const saved = addExpense({ amount: v, category, note, date, pay: trackPay ? pay : undefined, ...extra });
     const day = Number(date.slice(8));
     const nextStartMonth = addMonths(monthKey(date), 1);
     if (repeat) {
@@ -433,6 +537,50 @@ function ExpenseSheet({ expense, onClose }) {
                 </span>
               )}
             </div>
+          </div>
+
+          {/* Receipt or payment screenshot: scan it into the form, and keep the photo with the expense */}
+          <div className={`entry__receipt ${scanMsg ? `is-${scanMsg.tone}` : ''}`}>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) takePhoto(f);
+              }}
+            />
+            {hasPhoto ? (
+              <>
+                {photo?.url || oldUrl ? <img className="entry__thumb" src={photo?.url || oldUrl} alt={t('Receipt photo')} /> : <span className="entry__thumb" />}
+                <span className="entry__receipt-text" aria-live="polite">
+                  {scanning ? (
+                    <>
+                      <Loader2 size={15} className="spin" aria-hidden="true" /> {t('Reading the receipt…')}
+                    </>
+                  ) : (
+                    scanMsg?.text || t('Photo attached')
+                  )}
+                </span>
+                {!scanning && (
+                  <>
+                    <button type="button" className="icon-btn icon-btn--sm" onClick={() => fileRef.current?.click()} aria-label={t('Use another photo')}>
+                      <RotateCw size={16} />
+                    </button>
+                    <button type="button" className="icon-btn icon-btn--sm" onClick={removePhoto} aria-label={t('Remove photo')}>
+                      <X size={16} />
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <button type="button" className="chip entry__scan" onClick={() => fileRef.current?.click()} title={aiOn ? t('receipt-privacy') : undefined}>
+                {aiOn ? <ScanLine size={16} aria-hidden="true" /> : <ImagePlus size={16} aria-hidden="true" />}
+                {aiOn ? t('Scan receipt or screenshot') : t('Add receipt photo')}
+              </button>
+            )}
           </div>
 
           {/* One-tap repeats of what she logs most */}
@@ -607,8 +755,8 @@ function ExpenseSheet({ expense, onClose }) {
             </button>
           </div>
 
-          <button type="submit" className="btn btn--primary btn--block entry__submit">
-            {saveLabel}
+          <button type="submit" className="btn btn--primary btn--block entry__submit" disabled={scanning}>
+            {scanning ? t('Reading the receipt…') : saveLabel}
           </button>
         </div>
       </form>

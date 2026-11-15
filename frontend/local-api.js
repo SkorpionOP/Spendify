@@ -19,18 +19,16 @@ const mount = (middlewares) => {
         /* the function answers 400 */
       }
       const { default: handler } = await load();
-      const reply = {
-        setHeader: (k, v) => res.setHeader(k, v),
-        status(code) {
-          res.statusCode = code;
-          return reply;
-        },
-        json(obj) {
-          res.setHeader('content-type', 'application/json');
-          res.end(JSON.stringify(obj));
-        },
+      // The real Node response, with the two Vercel helpers added, so streamed replies (res.write) work too
+      res.status = (code) => {
+        res.statusCode = code;
+        return res;
       };
-      await handler({ method: req.method, body }, reply);
+      res.json = (obj) => {
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify(obj));
+      };
+      await handler({ method: req.method, body, headers: req.headers, socket: req.socket }, res);
     });
   }
 };
@@ -39,7 +37,7 @@ export const localApi = () => ({
   name: 'spendify-local-api',
   config(_, { mode }) {
     const env = loadEnv(mode, process.cwd(), '');
-    for (const k of ['GROQ_API_KEY', 'GROQ_MODEL']) if (env[k] && !process.env[k]) process.env[k] = env[k];
+    for (const k of ['GROQ_API_KEY', 'GROQ_MODEL', 'GROQ_VISION_MODEL', 'AI_RATE_PER_MINUTE', 'AI_RATE_PER_DAY', 'ALLOWED_ORIGINS', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN']) if (env[k] && !process.env[k]) process.env[k] = env[k];
   },
   configureServer(server) {
     mount(server.middlewares);

@@ -5,6 +5,9 @@
  * Returns { changes, unclear } where `changes` match lib/twin.js and `unclear` lists the parts it couldn't use.
  */
 
+import { detectCategoryFromNote } from './guesscat.js';
+import { addMonths, currentMonth, cycleEnd, cycleStart, toISODate } from './dates.js';
+
 /* ---------- numbers ---------- */
 
 const UNITS = [
@@ -109,8 +112,9 @@ const CATEGORY_WORDS = [
   ['liburan', 'Travel'], ['travel', 'Travel'],
   ['hadiah', 'Gifts'], ['gifts', 'Gifts'], ['kado', 'Gifts'],
 ];
-const categoryIn = (text) => {
-  for (const [w, cat] of CATEGORY_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) return cat;
+export const categoryIn = (text) => {
+  // "jajanku", "kopinya": allow the -ku/-mu/-nya endings
+  for (const [w, cat] of CATEGORY_WORDS) if (new RegExp(`\\b${w}(ku|mu|nya)?\\b`, 'i').test(text)) return cat;
   return null;
 };
 
@@ -147,13 +151,17 @@ const RE = {
   recurringWord: /\b(langganan|subscription|cicilan|installment|kredit|kos|kost|sewa|rent|nyicil|angsuran)\b/i,
   buy: /\b(beli|membeli|buy|purchase|afford|mampu|sanggup|bayar|pay for|liburan|trip|holiday|jalan-jalan|nikah|wedding)\b/i,
   later: /\b(bulan depan|next month)\b/i,
+  // Something she already spent: "tadi makan 35rb", "kemarin gojek 20rb", "spent 50k on coffee"
+  logged: /\b(tadi|barusan|baru aja|baru saja|habis|abis|kemarin|kemaren|udah bayar|sudah bayar|catat|catet|catatkan|spent|just paid|just bought|i paid|paid|i bought|bought|log)\b/i,
+  lookup: /\b(apa saja|apa aja|what did i|show me|show|lihat|liat|tampilkan|daftar|list|riwayat|history|berapa kali|how many times|how much did i spend|berapa total|total)\b/i,
+  lastOne: /\b(terakhir|yang tadi|last (one|expense)|latest)\b/i,
   inMonths: /\b(?:(\d+)\s*bulan lagi|in\s*(\d+)\s*months?)\b/i,
 };
 
 /** Split "A dan B, lalu C" into clauses, without breaking "1,5 juta". */
 export const clauses = (text) =>
   text
-    .split(/\s*(?:,(?!\d)|;|\.(?!\d)|\bdan\b|\band\b|\bterus\b|\blalu\b|\bplus\b|\bjuga\b|\bserta\b|\balso\b|\bthen\b)\s*/i)
+    .split(/\s*(?:,(?!\d)|;|\.(?!\d)|\bdan\b|\band\b|\bterus\b|(?<!\b(?:bulan|minggu|hari|tahun|yang)\s+)\blalu\b|\bplus\b|\bjuga\b|\bserta\b|\balso\b|\bthen\b)\s*/i)
     .map((s) => s.trim())
     .filter((s) => s && /\w/.test(s));
 
@@ -181,6 +189,35 @@ const whenIn = (text, now) => {
   return 0;
 };
 
+const addDays = (d, n) => {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() + n);
+  return x;
+};
+
+/** "kemarin" → 1, "3 hari lalu" / "3 days ago" → 3, otherwise 0 (today). */
+const daysAgoIn = (text) => {
+  if (/\b(kemarin|kemaren|yesterday)\b/i.test(text)) return 1;
+  const m = text.match(/\b(\d+)\s*(hari(?: yang)? lalu|days? ago)\b/i);
+  return m ? Math.min(60, Number(m[1])) : 0;
+};
+
+/** A time window for lookups, as ISO dates. Months follow her pay cycle. */
+const windowIn = (text, now) => {
+  const iso = (d) => toISODate(d);
+  if (/\b(hari ini|today)\b/i.test(text)) return { from: iso(now), to: iso(now) };
+  if (/\b(kemarin|kemaren|yesterday)\b/i.test(text)) return { from: iso(addDays(now, -1)), to: iso(addDays(now, -1)) };
+  const monday = addDays(now, -((now.getDay() + 6) % 7));
+  if (/\b(minggu ini|this week)\b/i.test(text)) return { from: iso(monday), to: iso(now) };
+  if (/\b(minggu lalu|minggu kemarin|last week)\b/i.test(text)) return { from: iso(addDays(monday, -7)), to: iso(addDays(monday, -1)) };
+  const key = currentMonth();
+  if (/\b(bulan lalu|bulan kemarin|last month)\b/i.test(text)) return { from: cycleStart(addMonths(key, -1)), to: cycleEnd(addMonths(key, -1)) };
+  if (/\b(bulan ini|this month)\b/i.test(text)) return { from: cycleStart(key), to: iso(now) };
+  return null;
+};
+
+const TIME_WORDS = /\b(hari ini|today|kemarin|kemaren|yesterday|minggu ini|this week|minggu lalu|minggu kemarin|last week|bulan lalu|bulan kemarin|last month|bulan ini|this month|\d+\s*(hari(?: yang)? lalu|days? ago))\b/gi;
+
 export const parseClause = (raw, now = new Date()) => {
   const text = wordsToDigits(raw);
   const amounts = amountsIn(text);
@@ -189,6 +226,20 @@ export const parseClause = (raw, now = new Date()) => {
 
   // "Kapan tabunganku 10 juta?" / "When will I have 10M saved?"
   if (RE.question.test(text) && RE.savingsWord.test(text) && amount) return { type: 'target', amount };
+
+  // Delete the newest expense: "hapus pengeluaran terakhir", "delete the last expense"
+  if (RE.removeLimit.test(text) && RE.lastOne.test(text) && !RE.limit.test(text)) {
+    return { type: 'edit', category: null, text: null, from: null, to: null, last: true, remove: true, amount: null, toCategory: null };
+  }
+
+  // Look up expenses she logged: "apa aja jajanku minggu ini?", "show my coffee last month"
+  if (RE.lookup.test(text) && !RE.question.test(text) && !amount) {
+    const win = windowIn(text, now);
+    const at = text.match(/\b(?:di|at|from|dari)\s+([a-z0-9][\w-]{2,})/i);
+    const place = at && !/^(mana|sini|situ|luar|rumah|kantor)$/i.test(at[1]) ? at[1].toLowerCase() : null;
+    const cat = place ? null : categoryIn(text) || detectCategoryFromNote(text);
+    if (win || cat || place) return { type: 'lookup', category: cat, text: place, from: win?.from || null, to: win?.to || null, last: false };
+  }
 
   // Income up/down/to
   if (RE.income.test(text) && (amount || pct)) {
@@ -204,6 +255,17 @@ export const parseClause = (raw, now = new Date()) => {
   if (RE.limit.test(text) && cat) {
     if (RE.removeLimit.test(text)) return { type: 'limit', category: cat, amount: null };
     if (amount) return { type: 'limit', category: cat, amount };
+  }
+
+  // An expense she already made: log it (the app asks her to confirm first)
+  if (amount && RE.logged.test(text) && !RE.save.test(text) && !RE.monthly.test(text) && !RE.cut.test(text) && !RE.later.test(text)) {
+    const name = tidyName(
+      text
+        .replace(TIME_WORDS, ' ')
+        .replace(RE.logged, ' ')
+        .replace(/\b(beli|membeli|bayar|buat|untuk|on|for|di|at|pakai|pake|yang|udah|sudah|aja|just)\b/gi, ' ')
+    );
+    return { type: 'expense', amount, category: detectCategoryFromNote(text) || cat || 'Others', name, daysAgo: daysAgoIn(text) };
   }
 
   // Spend less on a category

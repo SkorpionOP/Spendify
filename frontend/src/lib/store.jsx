@@ -2,8 +2,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { addMonths, currentMonth, dateInCycle, monthKey, today } from './dates';
 import { applyRecurring, empty, normalize, planFor, uid } from './money';
+import { blobToDataUrl, dataUrlToBlob } from './image';
 import {
+  allReceipts,
   getSnapshot,
+  pruneReceipts,
+  saveReceipt,
   hasData,
   readLocal,
   readMirror,
@@ -26,7 +30,8 @@ export { applyRecurring, monthSummary, normalize, planFor, spentIn } from './mon
  *   profile:  { name } | null,
  *   plans:    { 'YYYY-MM': { salary, needsPercent } }   // plan in effect from that month on
  *   topups:   { 'YYYY-MM': { needs, savings } }         // one-off additions for a month
- *   expenses: [{ id, amount, category, note, date, createdAt, recurringId? }]
+ *   expenses: [{ id, amount, category, note, date, createdAt, recurringId?, pay?, receiptId?, merchant?, items? }]
+ *             receiptId points to a photo in IndexedDB (persist.js); items: [{ name, amount }] read from it
  *   recurring:[{ id, amount, category, note, day, since: 'YYYY-MM', lastRun: 'YYYY-MM' | null }]
  *   settings: { theme: 'system' | 'light' | 'dark', lang: 'id' | 'en', currency: 'IDR' | … }
  *   startMonth: 'YYYY-MM',
@@ -92,6 +97,8 @@ export function StoreProvider({ children }) {
       canWrite.current = true;
       setReady(true);
       requestPersistence();
+      // Tidy away receipt photos no expense uses any more (kept 30 days for undo and restores)
+      pruneReceipts(latest.current).catch(() => {});
     })();
     return () => {
       cancelled = true;
@@ -190,6 +197,9 @@ export function StoreProvider({ children }) {
         date: e.date || today(),
         createdAt: Date.now(),
         ...(e.pay ? { pay: e.pay } : {}),
+        ...(e.receiptId ? { receiptId: e.receiptId } : {}),
+        ...(e.merchant ? { merchant: e.merchant } : {}),
+        ...(Array.isArray(e.items) && e.items.length ? { items: e.items } : {}),
       };
       setState((s) => ({ ...s, expenses: [exp, ...s.expenses] }));
       return exp;
@@ -370,7 +380,23 @@ export function StoreProvider({ children }) {
   );
   const removeScenario = useCallback((id) => setState((s) => ({ ...s, scenarios: s.scenarios.filter((x) => x.id !== id) })), [setState]);
 
-  const exportData = useCallback(() => JSON.stringify({ ...latest.current, exportedAt: Date.now() }, null, 2), []);
+  /** The backup file. Receipt photos the expenses use are included as data URLs. */
+  const exportData = useCallback(async () => {
+    const s = latest.current;
+    const used = new Set(s.expenses.map((e) => e.receiptId).filter(Boolean));
+    const receipts = {};
+    if (used.size) {
+      for (const r of await allReceipts()) {
+        if (!used.has(r.id) || !r.blob) continue;
+        try {
+          receipts[r.id] = await blobToDataUrl(r.blob);
+        } catch {
+          /* skip a photo that can't be read */
+        }
+      }
+    }
+    return JSON.stringify({ ...s, ...(Object.keys(receipts).length ? { receipts } : {}), exportedAt: Date.now() }, null, 2);
+  }, []);
 
   const markBackedUp = useCallback(() => setState((s) => ({ ...s, lastBackupAt: Date.now() })), [setState]);
 
@@ -386,7 +412,15 @@ export function StoreProvider({ children }) {
         throw new Error(t('This file is not a Spendify backup.'));
       }
       await takeSnapshot(latest.current, 'Before restoring a backup file');
-      setState(() => applyRecurring(normalize(parsed)));
+      // Receipt photos travel in the file; put them back in their own store, not in the state
+      const { receipts, ...rest } = parsed;
+      if (receipts && typeof receipts === 'object') {
+        for (const [id, url] of Object.entries(receipts)) {
+          const blob = typeof url === 'string' && url.startsWith('data:image/') ? dataUrlToBlob(url) : null;
+          if (blob) await saveReceipt(id, blob).catch(() => {});
+        }
+      }
+      setState(() => applyRecurring(normalize(rest)));
     },
     [setState]
   );

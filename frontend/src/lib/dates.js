@@ -28,7 +28,7 @@ export const currentMonth = () => monthKey(today());
 /** True when months follow a payday other than the 1st. */
 export const isPayCycle = () => payday() !== 1;
 
-const addDaysISO = (iso, n) => {
+export const addDaysISO = (iso, n) => {
   const d = parseISO(iso);
   d.setDate(d.getDate() + n);
   return toISODate(d);

@@ -138,7 +138,7 @@ export function BackupCard() {
 
   const share = canShareFiles();
   const run = async () => {
-    const json = exportData();
+    const json = await exportData();
     const ok = share ? await shareBackup(json) : (downloadBackup(json), true);
     if (ok) {
       markBackedUp();

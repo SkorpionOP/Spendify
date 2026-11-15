@@ -6,7 +6,8 @@ import { dueCheckins, limitStatus } from '../lib/money';
 import { monthRecap, weekRecap } from '../lib/recap';
 import { useBackClose } from '../lib/backclose';
 import { monthPicture } from '../lib/budget';
-import { currentMonth, greeting, isPayCycle, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
+import { addDaysISO, addMonths, currentMonth, cycleEnd, cycleStart, greeting, isPayCycle, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
+import { AiRecap } from '../components/AiRecap';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
 import { GroupedExpenses } from '../components/ExpenseList';
@@ -85,6 +86,21 @@ export default function Home() {
     writeSeen('spendify:recap', mRecap.key);
     setSeen((x) => ({ ...x, month: mRecap.key }));
   };
+  // The periods the AI recap compares: the one that ended and the one before it
+  const recapKey = recap?.key;
+  const monthPeriod = useMemo(
+    () =>
+      recapKey
+        ? { month: recapKey, from: cycleStart(recapKey), to: cycleEnd(recapKey), prevFrom: cycleStart(addMonths(recapKey, -1)), prevTo: cycleEnd(addMonths(recapKey, -1)) }
+        : null,
+    [recapKey]
+  );
+  const weekFrom = week?.from;
+  const weekTo = week?.to;
+  const weekPeriod = useMemo(
+    () => (weekFrom ? { from: weekFrom, to: weekTo, prevFrom: addDaysISO(weekFrom, -7), prevTo: addDaysISO(weekFrom, -1) } : null),
+    [weekFrom, weekTo]
+  );
   const dismissWeek = () => {
     writeSeen('spendify:wrecap', week.key);
     setSeen((x) => ({ ...x, week: week.key }));
@@ -164,6 +180,7 @@ export default function Home() {
                 ? t('recap-saved', { spent: money(recap.spent), budget: money(recap.budget), left: money(recap.leftBudget) })
                 : t('recap-exact', { spent: money(recap.spent) })}
           </p>
+          <AiRecap kind="month" period={monthPeriod} />
         </section>
       )}
 
@@ -187,6 +204,7 @@ export default function Home() {
             {t('week-top', { category: catName(week.topCat), amount: money(week.topAmount) })}
             {week.noSpendDays > 0 ? ` ${tn(week.noSpendDays, 'week-nospend-1', 'week-nospend', {})}` : ''}
           </p>
+          <AiRecap kind="week" period={weekPeriod} />
         </section>
       )}
 

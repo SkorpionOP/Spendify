@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUp, Bookmark, Check, ChevronLeft, Gauge, Mic, MicOff, PiggyBank, Sparkles, Trash2, X } from 'lucide-react';
+import { RichReply } from '../components/RichReply';
+import { EditCard, ExpenseCard, LookupCard } from '../components/ChatCards';
 import { useStore } from '../lib/store';
 import { simulate } from '../lib/twin';
 import { clauses, understand } from '../lib/nlu';
@@ -14,7 +16,7 @@ import { catName, getConfig, t, tn } from '../lib/i18n';
 import { useToast } from '../components/Toasts';
 import { BetaTag } from '../components/BetaTag';
 
-const EXAMPLES = ['ex-analyze', 'ex-improve', 'ex-goal', 'ex-limit', 'ex-buy', 'ex-cut', 'ex-income'];
+const EXAMPLES = ['ex-analyze', 'ex-log', 'ex-lookup', 'ex-improve', 'ex-goal', 'ex-limit', 'ex-buy', 'ex-cut', 'ex-income'];
 
 const Speech = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -54,38 +56,11 @@ const describe = (c) => {
   }
 };
 
-/* ---------- reply text: short paragraphs, "- " bullets and **bold**, rendered without innerHTML ---------- */
-
-const inline = (s) =>
-  s.split(/(\*\*[^*]+\*\*)/g).map((part, i) => (part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : part));
-
-function RichReply({ text }) {
-  const blocks = [];
-  for (const line of text.split('\n')) {
-    const l = line.trim();
-    if (!l) continue;
-    const bullet = l.match(/^[-•*]\s+(.*)/);
-    const last = blocks[blocks.length - 1];
-    if (bullet) {
-      if (last?.type === 'ul') last.items.push(bullet[1]);
-      else blocks.push({ type: 'ul', items: [bullet[1]] });
-    } else blocks.push({ type: 'p', text: l });
-  }
-  return blocks.map((b, i) =>
-    b.type === 'ul' ? (
-      <ul key={i}>
-        {b.items.map((x, j) => (
-          <li key={j}>{inline(x)}</li>
-        ))}
-      </ul>
-    ) : (
-      <p key={i}>{inline(b.text)}</p>
-    )
-  );
-}
-
-/** Reveals the reply a few characters at a time, like someone typing. Tap to show it all. */
-function Typewriter({ text, onDone }) {
+/**
+ * Reveals the reply a few characters at a time, like someone typing. Tap to show it all.
+ * While the reply is still streaming in, `text` keeps growing and onDone waits until it has finished.
+ */
+function Typewriter({ text, onDone, streaming = false }) {
   const [shown, setShown] = useState(() => (reducedMotion() ? text.length : 0));
   const done = shown >= text.length;
   const doneRef = useRef(onDone);
@@ -95,14 +70,14 @@ function Typewriter({ text, onDone }) {
 
   useEffect(() => {
     if (done) {
-      doneRef.current?.();
+      if (!streaming) doneRef.current?.();
       return undefined;
     }
     // About 1.5 seconds for a typical reply, never slower than 2 characters a tick
     const step = Math.max(2, Math.ceil(text.length / 90));
     const id = setInterval(() => setShown((n) => Math.min(text.length, n + step)), 16);
     return () => clearInterval(id);
-  }, [done, text]);
+  }, [done, text, streaming]);
 
   // Cut at a word boundary so half-words and half-bold markers don't flicker
   let cut = text.slice(0, shown);
@@ -147,14 +122,15 @@ export default function Twin() {
   const { state, saveScenario, removeScenario } = useStore();
   const toast = useToast();
   const [text, setText] = useState('');
-  // The conversation: { id, role: 'user' | 'assistant', text, suggestions?, local?, typed? }
+  // The conversation: { id, role: 'user' | 'assistant', text, suggestions?, local?, limited?, typed?, streaming?, cards? }
+  // `cards` are shown under a reply: limits, expenses to log, edits and lookups. Nothing changes without a tap.
   const [messages, setMessages] = useState([]);
   // What is being simulated: each change with the words it came from. `ai` marks ones the AI read.
   const [items, setItems] = useState([]);
   const [unclear, setUnclear] = useState([]);
-  // Category limits she asked for: shown as cards she confirms, never set without a tap.
-  const [limitAsks, setLimitAsks] = useState([]);
   const [thinking, setThinking] = useState(false);
+  // True once a streamed reply has started arriving (the "thinking" dots give way to the text)
+  const [live, setLive] = useState(false);
   const [listening, setListening] = useState(false);
   const recRef = useRef(null);
   const endRef = useRef(null);
@@ -167,13 +143,37 @@ export default function Twin() {
   const aiOn = state.settings.aiHelp !== false;
   const noIncome = !(state.plans && Object.values(state.plans).some((p) => p.salary > 0));
 
-  // Keep the newest message and the input in view
+  // Keep the newest message and the input in view, also while a reply streams in and when its cards appear
+  const lastMsg = messages[messages.length - 1];
+  const lastLen = lastMsg?.text?.length || 0;
+  const lastTyped = !!lastMsg?.typed;
   useEffect(() => {
     if (started) endRef.current?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'end' });
-  }, [messages.length, thinking, started]);
+  }, [messages.length, thinking, started, lastLen, lastTyped]);
 
-  const say = (msg) => setMessages((cur) => [...cur, { id: ++msgId, ...msg }]);
+  // Give each card an id; a new limit card for a category replaces an older one for the same category.
+  const withCards = (cur, msg) => {
+    const cards = (msg.cards || []).map((c) => ({ ...c, id: ++msgId }));
+    const limitCats = new Set(cards.filter((c) => c.type === 'limit').map((c) => c.category));
+    const prior = limitCats.size
+      ? cur.map((m) => (m.cards ? { ...m, cards: m.cards.filter((c) => !(c.type === 'limit' && limitCats.has(c.category))) } : m))
+      : cur;
+    return { prior, cards };
+  };
+  const say = (msg) =>
+    setMessages((cur) => {
+      const { prior, cards } = withCards(cur, msg);
+      return [...prior, { id: ++msgId, ...msg, cards }];
+    });
+  // Finish a streamed reply in place
+  const finish = (id, msg) =>
+    setMessages((cur) => {
+      const { prior, cards } = withCards(cur, msg);
+      return prior.map((m) => (m.id === id ? { ...m, ...msg, cards, streaming: false } : m));
+    });
   const markTyped = (id) => setMessages((cur) => cur.map((m) => (m.id === id ? { ...m, typed: true } : m)));
+  const closeCard = (msgIdOf, cardId) =>
+    setMessages((cur) => cur.map((m) => (m.id === msgIdOf ? { ...m, cards: m.cards.filter((c) => c.id !== cardId) } : m)));
 
   // The basic reader that works offline, clause by clause
   const readLocally = (v) => {
@@ -187,8 +187,9 @@ export default function Twin() {
     return { found, missed };
   };
 
-  // AI first when it's on and online: it answers questions and, only for plans, returns changes.
-  // Otherwise the phone answers: a basic summary for questions, the basic reader for plans.
+  // AI first when it's on and online: it answers questions and returns changes for plans, expenses
+  // to log or fix, and lookups. The reply streams in as it is written.
+  // Otherwise the phone answers: a basic summary for questions, the basic reader for the rest.
   const run = async (value = text) => {
     const v = value.trim();
     if (!v || thinking) return;
@@ -196,46 +197,77 @@ export default function Twin() {
     const history = messages.map((m) => ({ role: m.role, text: m.text }));
     say({ role: 'user', text: v });
     const context = buildContext(state, now);
+    let limited = false;
 
     if (aiOn) {
       setThinking(true);
-      const ai = await askAI({ text: v, context, history });
+      const liveId = ++msgId;
+      let streamed = false;
+      const ai = await askAI({
+        text: v,
+        context,
+        history,
+        onDelta: (soFar) => {
+          if (!streamed) {
+            streamed = true;
+            setLive(true);
+            setMessages((cur) => [...cur, { id: liveId, role: 'assistant', text: soFar, streaming: true }]);
+          } else setMessages((cur) => cur.map((m) => (m.id === liveId ? { ...m, text: soFar } : m)));
+        },
+      });
       setThinking(false);
-      if (ai && (ai.reply || ai.changes.length)) {
-        const plans = ai.changes.filter((c) => !isAction(c));
-        addLimitAsks(ai.changes.filter(isAction));
-        if (plans.length) setItems((cur) => [...cur, ...plans.map((change) => ({ change, source: v, ai: true }))]);
+      setLive(false);
+      if (ai && !ai.limited && (ai.reply || ai.changes.length)) {
+        // The data part of a streamed reply was lost: let the phone's reader find any plan in her words
+        let changes = ai.dataOk || ai.changes.length ? ai.changes : readLocally(v).found.map((x) => x.change);
+        // A question about specific expenses that the AI answered without a search: search anyway.
+        // Lookups only read her data, so the phone's own reading is safe to add.
+        if (!changes.some((c) => c.type === 'lookup')) {
+          const lookup = readLocally(v).found.find((x) => x.change.type === 'lookup');
+          if (lookup) changes = [...changes, lookup.change];
+        }
+        const plans = changes.filter((c) => !isAction(c));
+        if (plans.length) setItems((cur) => [...cur, ...plans.map((change) => ({ change, source: v, ai: ai.dataOk }))]);
         setUnclear(ai.unclear.map((u) => ({ text: u, hint: null })));
-        say({ role: 'assistant', text: ai.reply || t('reply-set-up'), suggestions: ai.suggestions });
+        const msg = { role: 'assistant', text: ai.reply || t('reply-set-up'), suggestions: ai.suggestions, cards: changes.filter(isAction) };
+        if (streamed) finish(liveId, msg);
+        else say(msg);
         return;
       }
+      // Nothing usable: drop a half-streamed reply and answer on the phone instead
+      if (streamed) setMessages((cur) => cur.filter((m) => m.id !== liveId));
+      limited = !!ai?.limited;
     }
 
     const local = readLocally(v);
-    const localLimits = local.found.filter((x) => isAction(x.change)).map((x) => x.change);
+    const localActions = local.found.filter((x) => isAction(x.change)).map((x) => x.change);
     const localPlans = local.found.filter((x) => !isAction(x.change));
+    const tag = { local: aiOn, limited };
     if (local.found.length) {
-      addLimitAsks(localLimits);
       if (localPlans.length) setItems((cur) => [...cur, ...localPlans]);
       setUnclear(local.missed);
-      say({ role: 'assistant', text: localPlans.length ? t('reply-local-scenario') : t('reply-local-limit'), local: aiOn });
+      const only = localActions[0]?.type;
+      const reply = localPlans.length
+        ? t('reply-local-scenario')
+        : only === 'expense'
+          ? t('reply-local-expense')
+          : only === 'edit'
+            ? t('reply-local-edit')
+            : only === 'lookup'
+              ? t('reply-local-lookup')
+              : t('reply-local-limit');
+      say({ role: 'assistant', text: reply, cards: localActions, ...tag });
     } else if (local.missed.some((u) => u.hint != null)) {
       setUnclear(local.missed);
-      say({ role: 'assistant', text: t('reply-need-price'), local: aiOn });
+      say({ role: 'assistant', text: t('reply-need-price'), ...tag });
     } else if (looksLikeQuestion(v)) {
       const a = localAnswer(context);
       setUnclear([]);
-      say({ role: 'assistant', text: a.text, suggestions: a.suggestions, local: true });
+      say({ role: 'assistant', text: a.text, suggestions: a.suggestions, local: true, limited });
     } else {
       setUnclear([]);
-      say({ role: 'assistant', text: t('reply-not-understood'), suggestions: [t('ex-analyze'), t('ex-goal')], local: aiOn });
+      say({ role: 'assistant', text: t('reply-not-understood'), suggestions: [t('ex-analyze'), t('ex-goal')], ...tag });
     }
-  };
-
-  // One card per category; asking again for the same category replaces the earlier card.
-  const addLimitAsks = (list) => {
-    if (!list.length) return;
-    setLimitAsks((cur) => [...cur.filter((x) => !list.some((c) => c.category === x.category)), ...list.map((c) => ({ ...c, id: ++msgId }))]);
   };
   const removeChange = (i) => setItems((cur) => cur.filter((_, j) => j !== i));
   const setAmount = (i, amount) =>
@@ -248,7 +280,6 @@ export default function Twin() {
   const reset = () => {
     setItems([]);
     setUnclear([]);
-    setLimitAsks([]);
     setMessages([]);
   };
 
@@ -330,22 +361,31 @@ export default function Twin() {
                     {m.text}
                   </div>
                 ) : (
-                  <div key={m.id} className="bubble bubble--ai private-num">
-                    <span className="bubble__who" aria-hidden="true">
-                      <Sparkles size={14} />
-                    </span>
-                    <Typewriter text={m.text} onDone={() => !m.typed && markTyped(m.id)} />
-                    {m.local && <span className="bubble__tag">{t('Answered on this phone (AI not available)')}</span>}
+                  <div key={m.id} className="thread__turn">
+                    <div className="bubble bubble--ai private-num">
+                      <span className="bubble__who" aria-hidden="true">
+                        <Sparkles size={14} />
+                      </span>
+                      <Typewriter text={m.text} streaming={!!m.streaming} onDone={() => !m.typed && markTyped(m.id)} />
+                      {m.local && (
+                        <span className="bubble__tag">{m.limited ? t('ai-limited-tag') : t('Answered on this phone (AI not available)')}</span>
+                      )}
+                    </div>
+                    {m.typed &&
+                      m.cards?.map((c) => {
+                        const close = () => closeCard(m.id, c.id);
+                        if (c.type === 'limit') return <LimitCard key={c.id} ask={c} onClose={close} />;
+                        if (c.type === 'expense') return <ExpenseCard key={c.id} ask={c} onClose={close} />;
+                        if (c.type === 'edit') return <EditCard key={c.id} ask={c} onClose={close} />;
+                        if (c.type === 'lookup') return <LookupCard key={c.id} ask={c} onClose={close} />;
+                        return null;
+                      })}
                   </div>
                 )
               )}
-              {thinking && <Thinking />}
+              {thinking && !live && <Thinking />}
             </div>
           )}
-
-          {limitAsks.map((c) => (
-            <LimitCard key={c.id} ask={c} onClose={() => setLimitAsks((cur) => cur.filter((x) => x.id !== c.id))} />
-          ))}
 
           {/* The simulator's cards appear only when a reply set up a plan or a "what if" */}
           {items.length > 0 && (
@@ -456,7 +496,7 @@ export default function Twin() {
             </section>
           )}
 
-          <p className="twin__foot">{t('This is only a simulation. Your real expenses and savings are never changed.')}</p>
+          <p className="twin__foot">{t('twin-foot')}</p>
         </>
       )}
     </div>

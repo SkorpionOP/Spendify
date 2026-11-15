@@ -6,11 +6,14 @@
  *   - one per day, last 14 days
  *   - one taken automatically before any destructive action (restore, delete-all)
  * Nothing in here ever overwrites data with an empty state.
+ *
+ * Receipt photos live in their own IndexedDB store ("receipts"), keyed by the expense's receiptId,
+ * because they are far too big for localStorage. They are never in snapshots; backups include them.
  */
 
 export const LS_KEY = 'spendify:v1';
 const DB_NAME = 'spendify';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // 2: receipts store
 const DAILY_KEEP = 14;
 const MANUAL_KEEP = 10;
 
@@ -23,6 +26,7 @@ const openDB = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
       if (!db.objectStoreNames.contains('snapshots')) db.createObjectStore('snapshots', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('receipts')) db.createObjectStore('receipts', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -178,4 +182,55 @@ export const isPersisted = async () => {
   } catch {
     return false;
   }
+};
+
+/* ---------- receipt photos ---------- */
+
+/** Saves a photo (a Blob) under `id`. Throws if storage is unavailable or full. */
+export const saveReceipt = (id, blob) => tx('receipts', 'readwrite', (s) => s.put({ id, blob, type: blob.type || 'image/jpeg', at: Date.now() }));
+
+/** The photo's Blob, or null. Never throws. */
+export const getReceipt = async (id) => {
+  if (!id) return null;
+  try {
+    const row = await tx('receipts', 'readonly', (s) => reqP(s.get(id)));
+    return row?.blob || null;
+  } catch {
+    return null;
+  }
+};
+
+export const deleteReceipt = async (id) => {
+  try {
+    await tx('receipts', 'readwrite', (s) => s.delete(id));
+  } catch {
+    /* ignore */
+  }
+};
+
+/** Every stored photo: [{ id, blob, at }]. */
+export const allReceipts = async () => {
+  try {
+    return await tx('receipts', 'readonly', (s) => reqP(s.getAll()));
+  } catch {
+    return [];
+  }
+};
+
+const ORPHAN_KEEP_MS = 30 * 864e5;
+
+/**
+ * Removes photos no expense points to any more. A photo is kept for 30 days after it was saved, so
+ * "Undo", restoring an earlier copy or a recent snapshot can still find it.
+ */
+export const pruneReceipts = async (state, now = Date.now()) => {
+  const used = new Set((state?.expenses || []).map((e) => e.receiptId).filter(Boolean));
+  const old = (await allReceipts()).filter((r) => !used.has(r.id) && now - (r.at || 0) > ORPHAN_KEEP_MS);
+  if (!old.length) return 0;
+  try {
+    await tx('receipts', 'readwrite', (s) => old.forEach((r) => s.delete(r.id)));
+  } catch {
+    return 0;
+  }
+  return old.length;
 };

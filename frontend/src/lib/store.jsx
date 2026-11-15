@@ -312,6 +312,41 @@ export function StoreProvider({ children }) {
     [setState]
   );
 
+  /* daily check-ins */
+  const addCheckin = useCallback(
+    ({ name, category, amount, days }) =>
+      setState((s) => ({ ...s, checkins: [...(s.checkins || []), { id: uid(), name, category, amount: Number(amount) || 0, days, askedOn: null }] })),
+    [setState]
+  );
+
+  const removeCheckin = useCallback((id) => setState((s) => ({ ...s, checkins: s.checkins.filter((c) => c.id !== id) })), [setState]);
+
+  /** Her answer for today: an amount logs it (and is remembered for next time); null means "not today". */
+  const answerCheckin = useCallback(
+    (id, amount) => {
+      const c = latest.current.checkins.find((x) => x.id === id);
+      if (!c) return null;
+      const day = today();
+      const exp =
+        amount > 0
+          ? { id: uid(), amount: Number(amount), category: c.category, note: c.name, date: day, createdAt: Date.now(), checkinId: id }
+          : null;
+      setState((s) => ({
+        ...s,
+        checkins: s.checkins.map((x) => (x.id === id ? { ...x, askedOn: day, ...(exp ? { amount: exp.amount } : {}) } : x)),
+        expenses: exp ? [exp, ...s.expenses] : s.expenses,
+      }));
+      return exp;
+    },
+    [setState]
+  );
+
+  /** Ask again today (after "Undo"). */
+  const reopenCheckin = useCallback(
+    (id) => setState((s) => ({ ...s, checkins: s.checkins.map((x) => (x.id === id ? { ...x, askedOn: null } : x)) })),
+    [setState]
+  );
+
   /* category limits: amount > 0 sets it, anything else removes it */
   const setLimit = useCallback(
     (cat, amount) =>
@@ -405,6 +440,10 @@ export function StoreProvider({ children }) {
     removeGoal,
     moveGoal,
     setLimit,
+    addCheckin,
+    removeCheckin,
+    answerCheckin,
+    reopenCheckin,
     saveScenario,
     removeScenario,
     exportData,

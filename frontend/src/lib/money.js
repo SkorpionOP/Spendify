@@ -1,4 +1,4 @@
-import { addMonths, currentMonth, dateInCycle, monthKey, today } from './dates';
+import { addMonths, currentMonth, dateInCycle, monthKey, toISODate, today } from './dates';
 import { clampPayday, defaultLang } from './i18n';
 
 /*
@@ -12,6 +12,7 @@ export const empty = () => ({
   topups: {},
   expenses: [],
   recurring: [],
+  checkins: [], // daily questions: [{ id, name, category, amount, days: [0..6, Monday = 0], askedOn }]
   goals: [], // [{ id, name, target, createdAt }] filled from savings, in list order
   limits: {}, // { Category: monthly cap }
   scenarios: [], // saved "what if" sentences: [{ id, name, text, createdAt }] (never touch real data)
@@ -60,6 +61,17 @@ export const normalize = (raw) => {
     s.limits && typeof s.limits === 'object'
       ? Object.fromEntries(Object.entries(s.limits).filter(([, v]) => Number(v) > 0).map(([k, v]) => [k, Number(v)]))
       : {};
+  s.checkins = Array.isArray(s.checkins)
+    ? s.checkins
+        .filter((c) => c && c.id && typeof c.name === 'string')
+        .map((c) => ({
+          ...c,
+          category: c.category || 'Others',
+          amount: Number(c.amount) > 0 ? Number(c.amount) : 0,
+          days: Array.isArray(c.days) ? c.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : [0, 1, 2, 3, 4],
+          askedOn: typeof c.askedOn === 'string' ? c.askedOn : null,
+        }))
+    : [];
   s.scenarios = Array.isArray(s.scenarios) ? s.scenarios.filter((x) => x && x.id && typeof x.text === 'string') : [];
   s.settings = { ...base.settings, ...(s.settings || {}) };
   s.settings.aiHelp = s.settings.aiHelp !== false;
@@ -151,6 +163,17 @@ export const applyRecurring = (state, onAdded = null) => {
   return { ...state, recurring, expenses: [...added, ...state.expenses] };
 };
 
+
+/* ---------- daily check-ins ---------- */
+
+/** Daily questions Home should ask right now: today is one of its days, and it hasn't been answered or logged today. */
+export const dueCheckins = (state, now = new Date()) => {
+  const day = toISODate(now);
+  const weekday = (now.getDay() + 6) % 7; // Monday = 0
+  return (state.checkins || []).filter(
+    (c) => c.days.includes(weekday) && c.askedOn !== day && !state.expenses.some((e) => e.checkinId === c.id && e.date === day)
+  );
+};
 
 /* ---------- savings goals ---------- */
 

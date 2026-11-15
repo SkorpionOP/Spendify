@@ -1,23 +1,21 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CalendarClock, Check, ChevronRight, CircleHelp, Eye, EyeOff, Gauge, Plus, Settings, Sparkles, Target, Wallet, X } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Check, CircleHelp, Eye, EyeOff, Gauge, Settings, Sparkles, Target, Wallet, X } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { limitStatus } from '../lib/money';
+import { dueCheckins, limitStatus } from '../lib/money';
 import { monthRecap, weekRecap } from '../lib/recap';
 import { useBackClose } from '../lib/backclose';
 import { monthPicture } from '../lib/budget';
 import { currentMonth, greeting, isPayCycle, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
-import { LangSwitch } from '../components/LangSwitch';
 import { GroupedExpenses } from '../components/ExpenseList';
-import { useExpenseSheet } from '../components/ExpenseSheet';
 import { BackupCard, InstallCard, PaydayCard } from '../components/Nudges';
 import { Sheet } from '../components/Sheet';
-import { RepeatsPanel, TopupPanel, upcomingRepeats } from '../components/MoneyTools';
+import { RepeatsPanel, TopupPanel } from '../components/MoneyTools';
+import { CheckinCard, CheckinsPanel } from '../components/Checkins';
 import { GoalEditor, SavingsCard } from '../components/Goals';
 import { LimitsPanel, LimitsSection } from '../components/Limits';
-import { BetaTag } from '../components/BetaTag';
 
 const readSeen = (k) => {
   try {
@@ -42,7 +40,6 @@ const STATUS = {
 
 export default function Home() {
   const { state, expenses, updateSettings } = useStore();
-  const open = useExpenseSheet();
   const [panel, setPanel] = useState(null); // 'topup' | 'repeats' | 'help' | 'goal' | 'limits' | null
   const [goal, setGoal] = useState(null);
   const onPanelClosed = useCallback(() => setPanel(null), []);
@@ -91,33 +88,14 @@ export default function Home() {
     writeSeen('spendify:wrecap', week.key);
     setSeen((x) => ({ ...x, week: week.key }));
   };
+  const checkins = dueCheckins(state);
   const limits = limitStatus(state, key);
   const limitWarn = limits.filter((l) => l.level !== 'ok').length;
 
-  const curKey = currentMonth();
-  const nextRepeat = upcomingRepeats(state.recurring)[0];
-  const skippedCount = state.recurring.filter((r) => (r.skippedMonths || []).includes(curKey)).length;
+  // Repeats still to come this month: shown as the badge on the shortcut, details are in the panel.
   const dueRepeats = state.recurring.filter(
-    (r) => !(r.skippedMonths || []).includes(curKey) && !expenses.some((e) => e.recurringId === r.id && monthKey(e.date) === curKey)
-  );
-  const dueTotal = dueRepeats.reduce((s, r) => s + r.amount, 0);
-
-  let repeatHint = t('Rent, subscriptions, bills');
-  if (nextRepeat) {
-    const nextName = nextRepeat.note || catName(nextRepeat.category);
-    const dateStr = shortDate(nextRepeat.next);
-    if (dueTotal > 0) {
-      repeatHint = t('Next: {name}, {date} • {amount} due this month', {
-        name: nextName,
-        date: dateStr,
-        amount: money(dueTotal),
-      });
-    } else {
-      repeatHint = t('Next: {name}, {date}', { name: nextName, date: dateStr });
-    }
-  } else if (state.recurring.length > 0) {
-    repeatHint = t('All {count} repeats settled for this month', { count: state.recurring.length });
-  }
+    (r) => !(r.skippedMonths || []).includes(key) && !expenses.some((e) => e.recurringId === r.id && monthKey(e.date) === key)
+  ).length;
 
   const st = STATUS[p.status];
   const statusLine =
@@ -138,7 +116,6 @@ export default function Home() {
           <h1 className="home__name">{state.profile?.name}</h1>
         </div>
         <div className="home__tools">
-          <LangSwitch />
           <button
             className="icon-btn"
             onClick={() => updateSettings({ hideAmounts: !hidden })}
@@ -156,6 +133,11 @@ export default function Home() {
           </Link>
         </div>
       </header>
+
+      {/* "Filled up your bike today?": asked once a day on the days she picked */}
+      {checkins.map((c) => (
+        <CheckinCard key={c.id} checkin={c} />
+      ))}
 
       {streak >= 3 && (
         <p className="streak">
@@ -212,7 +194,7 @@ export default function Home() {
           <p id="hero-label" className="hero__label">
             {t('Money left this month')}
           </p>
-          {st ? (
+          {st && p.status !== 'over' ? (
             <button className="hero__status" onClick={() => openPanel('help')}>
               <st.icon size={14} strokeWidth={2.75} aria-hidden="true" /> {t(st.label)}
               <CircleHelp size={14} aria-hidden="true" className="hero__help" />
@@ -246,23 +228,16 @@ export default function Home() {
             </p>
             {p.status !== 'ok' && <p className="hero__note">{statusLine}</p>}
 
-            <div className={`hero__today ${todayOver ? 'is-over' : ''}`}>
-              <div>
+            {/* Once the month's budget is gone, "today's share" means nothing, so it's left out. */}
+            {p.status !== 'over' && (
+              <div className={`hero__today ${todayOver ? 'is-over' : ''}`}>
                 <p className="hero__today-label">{todayOver ? t('Over today’s share') : t('You can spend today')}</p>
                 <p className="hero__today-num">{money(Math.abs(p.todayLeft))}</p>
               </div>
-              <button className="btn btn--primary hero__add" onClick={() => open()}>
-                <Plus size={18} strokeWidth={2.75} /> {t('Add expense')}
-              </button>
-            </div>
+            )}
           </>
         ) : (
-          <>
-            <p className="hero__note">{statusLine}</p>
-            <button className="btn btn--primary btn--block hero__add" onClick={() => open()}>
-              <Plus size={18} strokeWidth={2.75} /> {t('Add expense')}
-            </button>
-          </>
+          <p className="hero__note">{statusLine}</p>
         )}
       </section>
 
@@ -277,9 +252,9 @@ export default function Home() {
         <button className="shortcut" onClick={() => openPanel('repeats')}>
           <span className="shortcut__icon" aria-hidden="true">
             <CalendarClock size={22} />
-            {state.recurring.length > 0 && <span className="shortcut__badge">{state.recurring.length}</span>}
+            {dueRepeats > 0 && <span className="shortcut__badge">{dueRepeats}</span>}
           </span>
-          <span className="shortcut__label">{t('Monthly repeats')}</span>
+          <span className="shortcut__label">{t('Regulars')}</span>
         </button>
         <button className="shortcut" onClick={() => editGoal({})}>
           <span className="shortcut__icon shortcut__icon--goal" aria-hidden="true">
@@ -296,30 +271,7 @@ export default function Home() {
         </button>
       </nav>
 
-      {nextRepeat && dueTotal > 0 && (
-        <button className="next-repeat" onClick={() => openPanel('repeats')}>
-          <CalendarClock size={16} aria-hidden="true" />
-          <span>{repeatHint}</span>
-          {skippedCount > 0 && <span className="badge badge--sm badge--warn">{t('{n} skipped', { n: skippedCount })}</span>}
-        </button>
-      )}
-
       <SavingsCard savings={p.leftSavings} carriedIn={p.carriedIn} onEdit={editGoal} />
-
-      {p.status !== 'none' && (
-        <Link to="/twin" className="twin-cta">
-          <span className="twin-cta__icon" aria-hidden="true">
-            <Sparkles size={20} />
-          </span>
-          <span className="twin-cta__text">
-            <span className="twin-cta__title">
-              {t('twin-cta-title')} <BetaTag />
-            </span>
-            <span className="twin-cta__body">{t('twin-cta-body')}</span>
-          </span>
-          <ChevronRight size={20} aria-hidden="true" />
-        </Link>
-      )}
 
       <LimitsSection onManage={() => openPanel('limits')} onlyWarnings />
 
@@ -329,7 +281,10 @@ export default function Home() {
         </Sheet>
       )}
       {panel === 'repeats' && (
-        <Sheet title={t('Monthly repeats')} onClose={requestClose}>
+        <Sheet title={t('Regulars')} onClose={requestClose}>
+          <h3 className="sheet__sub">{t('Ask me every day')}</h3>
+          <CheckinsPanel />
+          <h3 className="sheet__sub">{t('Monthly repeats')}</h3>
           <RepeatsPanel />
         </Sheet>
       )}

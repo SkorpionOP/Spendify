@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyRecurring, goalProgress, limitStatus, monthSummary, normalize, planFor } from '../money';
+import { dueCheckins } from '../money';
 import { previewAfter, monthPicture } from '../budget';
 
 let n = 0;
@@ -191,5 +192,21 @@ describe('normalize', () => {
     expect(s.expenses).toEqual([]);
     expect(s.goals).toEqual([]);
     expect(s.limits).toEqual({});
+  });
+});
+
+describe('daily check-ins', () => {
+  const monday = new Date(2026, 10, 16, 8); // Mon 16 Nov 2026
+  const base = (extra = {}) =>
+    normalize({ checkins: [{ id: 'fuel', name: 'Isi bensin motor', category: 'Transport', amount: 25000, days: [0, 1, 2, 3, 4], ...extra }] });
+
+  it('asks on the chosen days', () => {
+    expect(dueCheckins(base(), monday).map((c) => c.id)).toEqual(['fuel']);
+    expect(dueCheckins(base(), new Date(2026, 10, 15, 8))).toEqual([]); // Sunday
+  });
+  it('asks only once a day', () => {
+    expect(dueCheckins(base({ askedOn: '2026-11-16' }), monday)).toEqual([]);
+    const logged = { ...base(), expenses: [{ id: 'e', amount: 20000, date: '2026-11-16', category: 'Transport', note: '', checkinId: 'fuel' }] };
+    expect(dueCheckins(logged, monday)).toEqual([]);
   });
 });

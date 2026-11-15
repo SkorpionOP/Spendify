@@ -1834,8 +1834,123 @@ label.btn {
 }
 
 .home__ask {
-  background: linear-gradient(135deg, var(--jam), color-mix(in srgb, var(--jam) 45%, #8b5cf6));
-  color: #fff;
+  color: var(--jam);
+}
+
+/* Reached goals: one quiet line instead of a full row each */
+.savings__reached {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 4px 2px 0;
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+.savings__reached-goal {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Daily check-in on Home: "Filled up your bike today?" */
+.checkin {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 44px 14px 14px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  animation: bubble-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.checkin__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--cat) 16%, transparent);
+}
+
+.checkin__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkin__q {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.3;
+  padding-top: 2px;
+}
+
+.checkin__btns,
+.checkin__quick,
+.checkin__days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.checkin__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkin__row {
+  display: flex;
+  gap: 8px;
+}
+
+.checkin__row .input-prefix {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkin__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.checkin__days .chip {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.checkin-add {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet__sub {
+  margin: 4px 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.sheet__sub ~ .sheet__sub {
+  margin-top: 24px;
 }
 
 .beta-tag {

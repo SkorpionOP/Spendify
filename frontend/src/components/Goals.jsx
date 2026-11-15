@@ -11,6 +11,8 @@ import { useToast } from './Toasts';
 export function SavingsCard({ savings, carriedIn, onEdit }) {
   const { state } = useStore();
   const { list } = goalProgress(state.goals, savings);
+  const active = list.filter((g) => !g.done);
+  const reached = list.filter((g) => g.done);
   return (
     <section className="savings" aria-labelledby="savings-title">
       <div className="savings__top">
@@ -31,7 +33,7 @@ export function SavingsCard({ savings, carriedIn, onEdit }) {
         <p className="savings__hint">{carriedIn > 0 ? t('savings-hint-carry', { amount: money(carriedIn) }) : t('savings-hint')}</p>
       ) : (
         <ul className="savings__goals">
-          {list.map((g) => (
+          {active.map((g) => (
             <li key={g.id}>
               <button className={`mini-goal ${g.done ? 'is-done' : ''}`} onClick={() => onEdit(g)}>
                 <span className="mini-goal__top">
@@ -49,6 +51,17 @@ export function SavingsCard({ savings, carriedIn, onEdit }) {
               </button>
             </li>
           ))}
+          {reached.length > 0 && (
+            <li className="savings__reached">
+              <PartyPopper size={14} aria-hidden="true" />
+              <span>{t('Reached:')}</span>
+              {reached.map((g) => (
+                <button key={g.id} type="button" className="savings__reached-goal" onClick={() => onEdit(g)}>
+                  {g.name}
+                </button>
+              ))}
+            </li>
+          )}
         </ul>
       )}
     </section>

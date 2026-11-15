@@ -7,7 +7,7 @@ import { currentMonth, dateTime, periodPreview } from '../lib/dates';
 import { amountToInput, currencySymbol, formatAmountInput, parseAmountInput } from '../lib/format';
 import { CURRENCIES, LANGS, ordinal, t, tn } from '../lib/i18n';
 import { canShareFiles, downloadBackup, shareBackup } from '../lib/backup';
-import { DriveSection } from '../components/DriveBackup';
+import { CloudSection } from '../components/CloudBackup';
 import { isPersisted, listSnapshots, requestPersistence } from '../lib/persist';
 import { useInstall } from '../lib/install';
 import { SplitSlider } from '../components/SplitSlider';
@@ -381,7 +381,7 @@ function BackupSection() {
         </button>
       )}
 
-      <DriveSection />
+      <CloudSection />
 
       <button className="link-btn" onClick={() => setShowSnaps((v) => !v)} aria-expanded={showSnaps}>
         <HistoryIcon size={15} className="inline-icon" /> <span>{showSnaps ? t('Hide earlier copies') : t('Go back to an earlier copy')}</span>

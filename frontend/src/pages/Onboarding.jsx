@@ -11,6 +11,9 @@ import { LangSwitch } from '../components/LangSwitch';
 import { InstallHelp } from '../components/Nudges';
 import { GoalIllo, InstallIllo, PayIllo, PrivacyIllo } from '../components/Illustrations';
 import { useInstall } from '../lib/install';
+import { cloudAvailable } from '../lib/cloud';
+import { CloudRestore } from '../components/CloudBackup';
+import { Sheet } from '../components/Sheet';
 
 export default function Onboarding() {
   const { state, setup, importData, restoreSnapshot, updateSettings, addGoal } = useStore();
@@ -22,6 +25,7 @@ export default function Onboarding() {
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
   const [latestCopy, setLatestCopy] = useState(null);
+  const [codeRestore, setCodeRestore] = useState(false);
   const [name, setName] = useState('');
   const [salary, setSalary] = useState('');
   const [needsPercent, setNeedsPercent] = useState(70);
@@ -192,7 +196,7 @@ export default function Onboarding() {
           <div className="jar-illo__fill" />
         </div>
         <h1>{t('Know what’s left, every day of the month.')}</h1>
-        <p>{t('Spendify keeps everything on this phone. There’s no account and no password, and nothing is sent to a server.')}</p>
+        <p>{t('onboard-privacy')}</p>
       </div>
 
       <form className="card onboard__form" onSubmit={submit} noValidate>
@@ -254,10 +258,21 @@ export default function Onboarding() {
         </p>
       </form>
 
+      {/* New phone: get everything back from the automatic backup with the recovery code */}
+      {cloudAvailable() && (
+        <button type="button" className="link-btn onboard__restore" onClick={() => setCodeRestore(true)}>
+          {t('Restore with a recovery code')}
+        </button>
+      )}
       <label className="link-btn onboard__restore">
         {t('Restore from a backup file')}
         <input type="file" accept="application/json,.json" onChange={restore} hidden />
       </label>
+      {codeRestore && (
+        <Sheet title={t('Restore a backup')} onClose={() => setCodeRestore(false)}>
+          <CloudRestore onDone={() => setCodeRestore(false)} />
+        </Sheet>
+      )}
     </div>
   );
 }

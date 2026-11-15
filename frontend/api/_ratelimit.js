@@ -82,15 +82,18 @@ const bumpRedis = async ({ url, token }, keys) => {
 
 /**
  * Counts this request. Returns { ok: true } or { ok: false, retryAfter } (seconds).
+ * `scope` keeps separate counts (e.g. backups don't use up the chat allowance), with its own limits.
  */
-export const checkRate = async (req, now = Date.now()) => {
+export const checkRate = async (req, now = Date.now(), { scope = 'ai', minute: minuteLimit, day: dayLimit } = {}) => {
   const who = clientKey(req);
-  const { minute, day } = limits();
+  const base = limits();
+  const minute = minuteLimit ?? base.minute;
+  const day = dayLimit ?? base.day;
   const minuteSlot = Math.floor(now / 60_000);
   const daySlot = Math.floor(now / 86_400_000);
   const keys = [
-    [`rl:ai:${who}:m:${minuteSlot}`, 60],
-    [`rl:ai:${who}:d:${daySlot}`, 86_400],
+    [`rl:${scope}:${who}:m:${minuteSlot}`, 60],
+    [`rl:${scope}:${who}:d:${daySlot}`, 86_400],
   ];
 
   let counts = null;

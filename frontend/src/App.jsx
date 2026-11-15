@@ -8,6 +8,7 @@ import { sendNotification } from './lib/notifications';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExpenseSheetProvider } from './components/ExpenseSheet';
 import { AppShell } from './components/AppShell';
+import { useAutoCloudBackup } from './components/CloudBackup';
 import Onboarding from './pages/Onboarding';
 import Twin from './pages/Twin';
 import Home from './pages/Home';
@@ -61,6 +62,8 @@ function Routed() {
       clearAutoAdded();
     }
   }, [autoAddedRecurring, clearAutoAdded, state.settings?.notifyRecurring, toast]);
+
+  useAutoCloudBackup();
 
   if (!ready) return <div className="splash" aria-label={t('Loading')} />;
   if (!state.profile) return <Onboarding />;

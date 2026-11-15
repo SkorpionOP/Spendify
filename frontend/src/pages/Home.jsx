@@ -9,6 +9,7 @@ import { monthPicture } from '../lib/budget';
 import { addDaysISO, addMonths, currentMonth, cycleEnd, cycleStart, greeting, isPayCycle, monthKey, monthLabel, shortDate, toISODate } from '../lib/dates';
 import { AiRecap } from '../components/AiRecap';
 import { IouCard } from '../components/IouCard';
+import { CloudOfferCard } from '../components/CloudBackup';
 import { debtSummary } from '../lib/iou';
 import { money } from '../lib/format';
 import { catName, t, tn } from '../lib/i18n';
@@ -343,6 +344,7 @@ export default function Home() {
         </Sheet>
       )}
 
+      <CloudOfferCard />
       <BackupCard />
       <InstallCard />
 

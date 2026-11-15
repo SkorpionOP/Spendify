@@ -5,7 +5,7 @@
  */
 import { loadEnv } from 'vite';
 
-const ROUTES = { '/api/understand': () => import('./api/understand.js') };
+const ROUTES = { '/api/understand': () => import('./api/understand.js'), '/api/backup': () => import('./api/backup.js') };
 
 const mount = (middlewares) => {
   for (const [path, load] of Object.entries(ROUTES)) {
@@ -37,7 +37,7 @@ export const localApi = () => ({
   name: 'spendify-local-api',
   config(_, { mode }) {
     const env = loadEnv(mode, process.cwd(), '');
-    for (const k of ['GROQ_API_KEY', 'GROQ_MODEL', 'GROQ_VISION_MODEL', 'AI_RATE_PER_MINUTE', 'AI_RATE_PER_DAY', 'ALLOWED_ORIGINS', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN']) if (env[k] && !process.env[k]) process.env[k] = env[k];
+    for (const k of ['GROQ_API_KEY', 'GROQ_MODEL', 'GROQ_VISION_MODEL', 'AI_RATE_PER_MINUTE', 'AI_RATE_PER_DAY', 'ALLOWED_ORIGINS', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN', 'BACKUP_ALLOWED_DEVICES', 'BACKUP_KEEP']) if (env[k] && !process.env[k]) process.env[k] = env[k];
   },
   configureServer(server) {
     mount(server.middlewares);

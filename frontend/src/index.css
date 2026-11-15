@@ -6121,3 +6121,82 @@ a.shortcut {
 .drive .link-btn {
   align-self: flex-start;
 }
+
+.drive .btn-pair {
+  grid-template-columns: 1fr;
+}
+
+.drive .btn svg {
+  flex: none;
+}
+
+/* ---------- Automatic backup ---------- */
+.nudge--cloud {
+  background: var(--leaf-soft);
+}
+
+.nudge--cloud .nudge__title .inline-icon {
+  vertical-align: -2px;
+}
+
+.nudge--cloud .nudge__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin-top: 4px;
+}
+
+.nudge--cloud .btn {
+  gap: 6px;
+}
+
+.cloud-code__ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 700;
+  color: var(--leaf);
+}
+
+.cloud-code__code {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: center;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 16px 12px;
+  border-radius: 16px;
+  border: 1.5px dashed var(--line);
+  background: var(--surface-2);
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  user-select: all;
+}
+
+.cloud-code .btn {
+  gap: 8px;
+}
+
+.cloud-code__input {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cloud__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.cloud__warn {
+  color: var(--danger);
+  font-weight: 600;
+}

@@ -24,6 +24,7 @@ export const empty = () => ({
     trackPayment: false,
     aiHelp: true,
     payday: 1, // day of the month the salary arrives; budget months run from it
+    calendarView: 'pay', // Calendar page: 'pay' = payday to payday, 'calendar' = 1st to last day
   },
   startMonth: currentMonth(),
   savedAt: 0,
@@ -63,6 +64,8 @@ export const normalize = (raw) => {
   s.settings = { ...base.settings, ...(s.settings || {}) };
   s.settings.aiHelp = s.settings.aiHelp !== false;
   s.settings.payday = clampPayday(s.settings.payday);
+  // People who set up before the payday question existed get asked once on Home.
+  s.settings.paydayAsked = !!s.settings.paydayAsked || s.settings.payday !== 1;
   s.settings.trackPayment = !!s.settings.trackPayment;
   s.settings.hideAmounts = !!s.settings.hideAmounts;
   s.settings.notifyRecurring = !!s.settings.notifyRecurring;

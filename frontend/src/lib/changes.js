@@ -5,7 +5,9 @@ import { CATEGORIES } from './categories.js';
  * such as the AI helper, goes through `cleanChanges` so a bad answer can never break the simulator.
  */
 
-export const CHANGE_TYPES = ['purchase', 'save', 'cut', 'income', 'monthly', 'target', 'goal'];
+export const CHANGE_TYPES = ['purchase', 'save', 'cut', 'income', 'monthly', 'target', 'goal', 'limit'];
+/** Changes that edit her real settings (after she confirms) instead of being simulated. */
+export const isAction = (c) => c?.type === 'limit';
 const CATEGORY_NAMES = new Set(CATEGORIES.map((c) => c.name));
 
 const money = (v) => {
@@ -64,6 +66,11 @@ export const cleanChange = (c) => {
     case 'goal': {
       const amount = money(c.amount);
       return amount ? { type: 'goal', amount, name: text(c.name), months: months(c.months), ...(c.estimated === true ? { estimated: true } : {}) } : null;
+    }
+    case 'limit': {
+      // A monthly cap for one category. No amount means "remove the limit".
+      if (!CATEGORY_NAMES.has(c.category)) return null;
+      return { type: 'limit', category: c.category, amount: money(c.amount) };
     }
     default:
       return null;

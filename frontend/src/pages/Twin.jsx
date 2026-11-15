@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, Bookmark, Check, ChevronLeft, Mic, MicOff, PiggyBank, Sparkles, Trash2, X } from 'lucide-react';
+import { ArrowUp, Bookmark, Check, ChevronLeft, Gauge, Mic, MicOff, PiggyBank, Sparkles, Trash2, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { simulate } from '../lib/twin';
 import { clauses, understand } from '../lib/nlu';
 import { askAI } from '../lib/ai';
 import { buildContext } from '../lib/aicontext';
 import { localAnswer, looksLikeQuestion } from '../lib/localanswer';
-import { cleanChange } from '../lib/changes';
-import { addMonths, monthLabel } from '../lib/dates';
+import { cleanChange, isAction } from '../lib/changes';
+import { addMonths, currentMonth, monthKey, monthLabel } from '../lib/dates';
 import { amountToInput, compact, currencySymbol, formatAmountInput, money, parseAmountInput, roundUpNice } from '../lib/format';
 import { catName, getConfig, t, tn } from '../lib/i18n';
 import { useToast } from '../components/Toasts';
 import { BetaTag } from '../components/BetaTag';
 
-const EXAMPLES = ['ex-analyze', 'ex-improve', 'ex-goal', 'ex-buy', 'ex-cut', 'ex-income'];
+const EXAMPLES = ['ex-analyze', 'ex-improve', 'ex-goal', 'ex-limit', 'ex-buy', 'ex-cut', 'ex-income'];
 
 const Speech = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -152,6 +152,8 @@ export default function Twin() {
   // What is being simulated: each change with the words it came from. `ai` marks ones the AI read.
   const [items, setItems] = useState([]);
   const [unclear, setUnclear] = useState([]);
+  // Category limits she asked for: shown as cards she confirms, never set without a tap.
+  const [limitAsks, setLimitAsks] = useState([]);
   const [thinking, setThinking] = useState(false);
   const [listening, setListening] = useState(false);
   const recRef = useRef(null);
@@ -200,7 +202,9 @@ export default function Twin() {
       const ai = await askAI({ text: v, context, history });
       setThinking(false);
       if (ai && (ai.reply || ai.changes.length)) {
-        if (ai.changes.length) setItems((cur) => [...cur, ...ai.changes.map((change) => ({ change, source: v, ai: true }))]);
+        const plans = ai.changes.filter((c) => !isAction(c));
+        addLimitAsks(ai.changes.filter(isAction));
+        if (plans.length) setItems((cur) => [...cur, ...plans.map((change) => ({ change, source: v, ai: true }))]);
         setUnclear(ai.unclear.map((u) => ({ text: u, hint: null })));
         say({ role: 'assistant', text: ai.reply || t('reply-set-up'), suggestions: ai.suggestions });
         return;
@@ -208,10 +212,13 @@ export default function Twin() {
     }
 
     const local = readLocally(v);
+    const localLimits = local.found.filter((x) => isAction(x.change)).map((x) => x.change);
+    const localPlans = local.found.filter((x) => !isAction(x.change));
     if (local.found.length) {
-      setItems((cur) => [...cur, ...local.found]);
+      addLimitAsks(localLimits);
+      if (localPlans.length) setItems((cur) => [...cur, ...localPlans]);
       setUnclear(local.missed);
-      say({ role: 'assistant', text: t('reply-local-scenario'), local: aiOn });
+      say({ role: 'assistant', text: localPlans.length ? t('reply-local-scenario') : t('reply-local-limit'), local: aiOn });
     } else if (local.missed.some((u) => u.hint != null)) {
       setUnclear(local.missed);
       say({ role: 'assistant', text: t('reply-need-price'), local: aiOn });
@@ -225,6 +232,11 @@ export default function Twin() {
     }
   };
 
+  // One card per category; asking again for the same category replaces the earlier card.
+  const addLimitAsks = (list) => {
+    if (!list.length) return;
+    setLimitAsks((cur) => [...cur.filter((x) => !list.some((c) => c.category === x.category)), ...list.map((c) => ({ ...c, id: ++msgId }))]);
+  };
   const removeChange = (i) => setItems((cur) => cur.filter((_, j) => j !== i));
   const setAmount = (i, amount) =>
     setItems((cur) => cur.map((x, j) => (j === i ? { ...x, change: { ...x.change, amount, estimated: false } } : x)));
@@ -236,6 +248,7 @@ export default function Twin() {
   const reset = () => {
     setItems([]);
     setUnclear([]);
+    setLimitAsks([]);
     setMessages([]);
   };
 
@@ -329,6 +342,10 @@ export default function Twin() {
               {thinking && <Thinking />}
             </div>
           )}
+
+          {limitAsks.map((c) => (
+            <LimitCard key={c.id} ask={c} onClose={() => setLimitAsks((cur) => cur.filter((x) => x.id !== c.id))} />
+          ))}
 
           {/* The simulator's cards appear only when a reply set up a plan or a "what if" */}
           {items.length > 0 && (
@@ -593,6 +610,77 @@ function Results({ r, onSave, onAmount }) {
         </>
       )}
     </>
+  );
+}
+
+/** A category limit the assistant suggested. Nothing changes until she taps the button. */
+function LimitCard({ ask, onClose }) {
+  const { state, expenses, setLimit } = useStore();
+  const toast = useToast();
+  const [value, setValue] = useState(() => amountToInput(ask.amount || ''));
+  const [done, setDone] = useState(false);
+  const cat = catName(ask.category);
+  const current = state.limits?.[ask.category] || 0;
+  const key = currentMonth();
+  const spent = expenses.reduce((s, e) => (e.category === ask.category && monthKey(e.date) === key ? s + e.amount : s), 0);
+  const removing = ask.amount == null;
+  const amount = parseAmountInput(value);
+
+  const apply = (e) => {
+    e.preventDefault();
+    if (removing) {
+      setLimit(ask.category, 0);
+      toast(t('Limit removed for {category}', { category: cat }));
+    } else {
+      if (!(amount > 0)) return toast(t('Enter an amount above zero.'), { tone: 'warn' });
+      setLimit(ask.category, amount);
+      toast(t('Limit set: {category} {amount} a month', { category: cat, amount: money(amount) }));
+    }
+    setDone(true);
+  };
+
+  if (removing && !current && !done) return null;
+
+  return (
+    <form className="plan limit-ask" onSubmit={apply} aria-label={t('Limit for {category}', { category: cat })}>
+      <div className="plan__head">
+        <span className="plan__icon" aria-hidden="true">
+          <Gauge size={20} />
+        </span>
+        <h2 className="plan__title">{removing ? t('Remove the {category} limit?', { category: cat }) : t('Limit for {category}', { category: cat })}</h2>
+        {!done && (
+          <button type="button" className="icon-btn icon-btn--sm limit-ask__close" onClick={onClose} aria-label={t('Not now')}>
+            <X size={16} />
+          </button>
+        )}
+      </div>
+      <p className="plan__line private-num">
+        {t('Spent on {category} this month: {amount}.', { category: cat, amount: money(spent) })}{' '}
+        {current ? t('Current limit: {amount}.', { amount: money(current) }) : t('No limit yet.')}
+      </p>
+      {done ? (
+        <p className="plan__done">
+          <Check size={16} aria-hidden="true" /> {removing ? t('Limit removed') : t('Limit set. You’ll get a heads-up at 80%.')}{' '}
+          <Link to="/" className="link-btn">
+            {t('See on Home')}
+          </Link>
+        </p>
+      ) : removing ? (
+        <button type="submit" className="btn btn--primary">
+          {t('Remove limit')}
+        </button>
+      ) : (
+        <div className="price-ask__row">
+          <div className="input-prefix">
+            <span aria-hidden="true">{currencySymbol()}</span>
+            <input inputMode="numeric" value={value} onChange={(e) => setValue(formatAmountInput(e.target.value))} aria-label={t('Monthly limit')} />
+          </div>
+          <button type="submit" className="btn btn--primary" disabled={!(amount > 0)}>
+            {current ? t('Update limit') : t('Set limit')}
+          </button>
+        </div>
+      )}
+    </form>
   );
 }
 

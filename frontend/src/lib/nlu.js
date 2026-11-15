@@ -138,6 +138,8 @@ const RE = {
   down: /\b(turun|berkurang|dipotong|potong|decrease|decreases|drop|drops|lower|cut|less)\b/i,
   set: /\b(jadi|menjadi|becomes|become|to)\b/i,
   cut: /\b(kurangi|mengurangi|kurangin|hemat|irit|cut|reduce|less|stop|berhenti|skip|tanpa)\b/i,
+  limit: /\b(batas|batasi|batasin|batasan|limit|limits|cap|maksimal|maks|max|jatah)\b/i,
+  removeLimit: /\b(hapus|hilangkan|cabut|matikan|remove|delete|clear)\b/i,
   stop: /\b(stop|berhenti|tanpa|no more|quit)\b/i,
   save: /\b(nabung|menabung|tabung|save|saving|sisihkan|simpan|put aside|set aside)\b/i,
   goalFor: /\b(buat|untuk|for|up for|biar bisa|so i can)\b/i,
@@ -196,8 +198,15 @@ export const parseClause = (raw, now = new Date()) => {
     return { type: 'income', delta: sign * amount };
   }
 
-  // Spend less on a category
   const cat = categoryIn(text);
+
+  // A real category limit: "batasi jajan 500rb sebulan", "limit food to 2M", "hapus batas jajan"
+  if (RE.limit.test(text) && cat) {
+    if (RE.removeLimit.test(text)) return { type: 'limit', category: cat, amount: null };
+    if (amount) return { type: 'limit', category: cat, amount };
+  }
+
+  // Spend less on a category
   if (RE.cut.test(text) && cat && !RE.save.test(text.replace(/\bhemat\b/i, ''))) {
     if (RE.stop.test(text)) return { type: 'cut', category: cat, pct: 1 };
     if (pct != null) return { type: 'cut', category: cat, pct: Math.min(1, pct) };

@@ -27,7 +27,7 @@ const SCHEMA = {
         additionalProperties: false,
         required: ['type', 'amount', 'name', 'at', 'category', 'pct', 'delta', 'set', 'months', 'estimated'],
         properties: {
-          type: { type: 'string', enum: ['purchase', 'save', 'cut', 'income', 'monthly', 'target', 'goal'] },
+          type: { type: 'string', enum: ['purchase', 'save', 'cut', 'income', 'monthly', 'target', 'goal', 'limit'] },
           amount: nullable('number'),
           name: nullable('string'),
           at: nullable('integer'),
@@ -68,6 +68,7 @@ Changes (the "what if" simulator): ONLY when the person describes a plan, decisi
 - monthly: a new recurring monthly cost (instalment, subscription, rent). amount per month (daily cost x 30), name, months (null if ongoing).
 - target: when will savings reach an amount. amount.
 - goal: saving up for something specific. amount (total), name, months until they want it (null if not said).
+- limit: set (or change) a monthly spending limit for one category in the app, e.g. "batasi jajan 500rb sebulan", "set a food limit". category (allowed values only), amount = the monthly cap. To remove a limit, amount null. If they ask you to suggest limits without amounts, propose one limit per category worth limiting (at most 4), based on their usual spending and current limits, rounded to friendly amounts. Limits are real settings: the app shows a button so they can confirm each one, so say they can tap to set it; never claim it is already set.
 For a goal or a future purchase, return just that one change: don't add a separate "save" change for the monthly amount, the app works that out and shows it.
 If they name a specific thing but no price, estimate a typical current price (Indonesian market for IDR), round it, and set estimated to true; otherwise estimated is false. Amounts are full numbers: "1,5 jt" = 1500000, "200rb" = 200000, "gopek" = 500, "goceng" = 5000, "ceban" = 10000, "sejuta" = 1000000. Fill fields that don't apply with null. When you return changes, the reply should briefly say what you set up (the app shows the numbers).
 - "unclear": parts of a plan that are too vague to simulate. Usually empty.

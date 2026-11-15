@@ -12,7 +12,7 @@ import { catName, t, tn } from '../lib/i18n';
 import { LangSwitch } from '../components/LangSwitch';
 import { GroupedExpenses } from '../components/ExpenseList';
 import { useExpenseSheet } from '../components/ExpenseSheet';
-import { BackupCard, InstallCard } from '../components/Nudges';
+import { BackupCard, InstallCard, PaydayCard } from '../components/Nudges';
 import { Sheet } from '../components/Sheet';
 import { RepeatsPanel, TopupPanel, upcomingRepeats } from '../components/MoneyTools';
 import { GoalEditor, SavingsCard } from '../components/Goals';
@@ -147,6 +147,10 @@ export default function Home() {
           >
             {hidden ? <EyeOff size={21} /> : <Eye size={21} />}
           </button>
+          {/* On phones the tab bar is full, so Ask Spendify lives here; on PC it's in the sidebar. */}
+          <Link to="/twin" className="icon-btn home__ask" aria-label={t('Ask Spendify')} title={t('Ask Spendify')}>
+            <Sparkles size={20} />
+          </Link>
           <Link to="/settings" className="icon-btn home__settings" aria-label={t('Settings')}>
             <Settings size={22} />
           </Link>
@@ -199,6 +203,8 @@ export default function Home() {
           </p>
         </section>
       )}
+
+      <PaydayCard />
 
       {/* One calm card: what's left this month, and what's left for today */}
       <section className={`hero is-${p.status}`} aria-labelledby="hero-label">

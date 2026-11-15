@@ -4,7 +4,9 @@ import { useInstall } from '../lib/install';
 import { useStore } from '../lib/store';
 import { canShareFiles, downloadBackup, shareBackup } from '../lib/backup';
 import { useToast } from './Toasts';
-import { t, tn } from '../lib/i18n';
+import { ordinal, t, tn } from '../lib/i18n';
+import { periodPreview } from '../lib/dates';
+import { PaydayPicker } from './PaydayPicker';
 
 const DAY = 864e5;
 
@@ -22,6 +24,39 @@ const dismissFor = (key, ms) => {
     /* ignore */
   }
 };
+
+/** Asked once on Home for people who set up before the payday question was in setup. */
+export function PaydayCard() {
+  const { state, updateSettings } = useStore();
+  const toast = useToast();
+  const [day, setDay] = useState(25);
+  if (!state.profile || state.settings.paydayAsked) return null;
+
+  const save = () => {
+    updateSettings({ payday: day, paydayAsked: true });
+    toast(day === 1 ? t('Budget months now follow the calendar') : t('payday-saved', { ord: ordinal(day), period: periodPreview(day) }));
+  };
+
+  return (
+    <section className="nudge nudge--payday" aria-labelledby="payday-title">
+      <button
+        className="icon-btn icon-btn--sm nudge__close"
+        onClick={() => updateSettings({ paydayAsked: true })}
+        aria-label={t('Not now')}
+      >
+        <X size={16} />
+      </button>
+      <h2 id="payday-title" className="nudge__title">
+        {t('payday-card-title')}
+      </h2>
+      <p className="nudge__body">{t('payday-card-body')}</p>
+      <PaydayPicker value={day} onChange={setDay} id="home-payday" />
+      <button className="btn btn--primary btn--sm" onClick={save}>
+        {t('Save payday')}
+      </button>
+    </section>
+  );
+}
 
 /** Step-by-step install instructions; also used in Settings. */
 export function InstallHelp({ compact = false }) {

@@ -288,6 +288,7 @@ a {
     color: var(--ink);
   }
   .home__settings,
+  .home__ask,
   .settings__back {
     display: none !important;
   }
@@ -1109,6 +1110,13 @@ a {
 }
 
 /* Head actions with Today button */
+.cal__view {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
 .cal__head-actions {
   display: flex;
   align-items: center;
@@ -1814,6 +1822,20 @@ label.btn {
 
 .action:hover {
   border-color: var(--ink-3);
+}
+
+/* Limit card in Ask Spendify */
+.limit-ask .plan__head {
+  width: 100%;
+}
+
+.limit-ask__close {
+  margin-left: auto;
+}
+
+.home__ask {
+  background: linear-gradient(135deg, var(--jam), color-mix(in srgb, var(--jam) 45%, #8b5cf6));
+  color: #fff;
 }
 
 .beta-tag {

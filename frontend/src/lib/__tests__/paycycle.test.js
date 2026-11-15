@@ -72,3 +72,13 @@ describe('pay cycle', () => {
     for (const e of out.expenses) expect(e.date.slice(8)).toBe('01');
   });
 });
+
+describe('payday question for existing users', () => {
+  it('asks people who set up before it existed', () => {
+    expect(normalize({ profile: { name: 'A' }, settings: {} }).settings.paydayAsked).toBe(false);
+  });
+  it('does not ask again once a payday is chosen', () => {
+    expect(normalize({ settings: { payday: 25 } }).settings.paydayAsked).toBe(true);
+    expect(normalize({ settings: { payday: 1, paydayAsked: true } }).settings.paydayAsked).toBe(true);
+  });
+});

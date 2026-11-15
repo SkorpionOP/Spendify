@@ -36,7 +36,11 @@ export { applyRecurring, monthSummary, normalize, planFor, spentIn } from './mon
 
 /* ---------- context ---------- */
 
-const StoreContext = createContext(null);
+// Keep one context object across dev hot reloads. Without this, editing a file the store imports
+// (money.js, dates.js…) re-creates the context, and screens reloaded with the new one can't see the
+// provider that is still running: "useStore must be used inside StoreProvider".
+const StoreContext = import.meta.hot?.data.StoreContext ?? createContext(null);
+if (import.meta.hot) import.meta.hot.data.StoreContext = StoreContext;
 
 const readInitial = () => {
   const { state, corrupt } = readLocal();
@@ -140,7 +144,7 @@ export function StoreProvider({ children }) {
     ({ name, salary, needsPercent, payday }) =>
       setState((s) => {
         // The payday decides which budget month "now" is, so apply it before working out keys.
-        const settings = payday ? { ...s.settings, payday } : s.settings;
+        const settings = payday ? { ...s.settings, payday, paydayAsked: true } : s.settings;
         configure(settings);
         return {
           ...s,

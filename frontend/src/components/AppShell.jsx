@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { CalendarDays, Eye, EyeOff, Home, PieChart, Plus, ReceiptText, Settings } from 'lucide-react';
+import { CalendarDays, Eye, EyeOff, Home, PieChart, Plus, ReceiptText, Settings, Sparkles } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { useStore } from '../lib/store';
 import { useExpenseSheet } from './ExpenseSheet';
 import { LangSwitch } from './LangSwitch';
+import { BetaTag } from './BetaTag';
 
 const NAV = [
   { to: '/', label: 'Home', icon: Home, end: true },
@@ -41,11 +42,14 @@ export function AppShell({ children }) {
           <Plus size={18} strokeWidth={2.5} /> {t('Add expense')}
         </button>
         <nav className="rail__nav">
-          {[...NAV, { to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className="rail__link">
-              <Icon size={20} /> {t(label)}
-            </NavLink>
-          ))}
+          {[...NAV, { to: '/twin', label: 'Ask Spendify', icon: Sparkles, beta: true }, { to: '/settings', label: 'Settings', icon: Settings }].map(
+            ({ to, label, icon: Icon, end, beta }) => (
+              <NavLink key={to} to={to} end={end} className="rail__link">
+                <Icon size={20} /> {t(label)}
+                {beta && <BetaTag />}
+              </NavLink>
+            )
+          )}
         </nav>
         <div className="rail__foot">
           <LangSwitch />

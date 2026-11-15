@@ -228,7 +228,7 @@ export default function Settings() {
           value={state.settings.payday}
           onChange={(d) => {
             if (d === state.settings.payday) return;
-            updateSettings({ payday: d });
+            updateSettings({ payday: d, paydayAsked: true });
             toast(d === 1 ? t('Budget months now follow the calendar') : t('payday-saved', { ord: ordinal(d), period: periodPreview(d) }));
           }}
           id="settings-payday"

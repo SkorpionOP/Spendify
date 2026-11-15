@@ -140,3 +140,16 @@ describe('missing prices', () => {
   });
 });
 
+
+describe('category limits', () => {
+  it('reads a limit with an amount', () => {
+    expect(understand('batasi jajan 500rb sebulan').changes).toEqual([{ type: 'limit', category: 'Snacks', amount: 500000 }]);
+    expect(understand('set a food limit of 2 million').changes[0]).toMatchObject({ type: 'limit', category: 'Food', amount: 2000000 });
+  });
+  it('reads removing a limit', () => {
+    expect(understand('hapus batas jajan').changes).toEqual([{ type: 'limit', category: 'Snacks', amount: null }]);
+  });
+  it('still reads "kurangi jajan" as a what-if cut', () => {
+    expect(understand('kurangi jajan 20%').changes[0].type).toBe('cut');
+  });
+});

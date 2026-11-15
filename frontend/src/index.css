@@ -6089,35 +6089,3 @@ a.shortcut {
 .entry__receipt[hidden] {
   display: none;
 }
-
-/* ---------- Google Drive backups (Settings → Your data) ---------- */
-.drive {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-}
-
-.drive__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.drive p {
-  margin: 0;
-}
-
-.drive .btn {
-  gap: 8px;
-}
-
-.drive .link-btn {
-  align-self: flex-start;
-}
